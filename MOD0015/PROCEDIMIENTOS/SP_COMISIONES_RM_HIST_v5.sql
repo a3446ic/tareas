@@ -1,24 +1,25 @@
 CREATE OR REPLACE PROCEDURE "EXT"."SP_COMISIONES_RM_HIST" (IN IN_FILENAME Varchar(120)) LANGUAGE SQLSCRIPT SQL SECURITY DEFINER DEFAULT SCHEMA "EXT" AS BEGIN DECLARE io_contador Number := 0;
 
 DECLARE i_Tenant VARCHAR(127);
-DECLARE cVersion CONSTANT VARCHAR(2) := '04';
+DECLARE cVersion CONSTANT VARCHAR(2) := '05';
 DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_COMISIONES_RM_HIST' || ' ' || cVersion;
 
-DECLARE cCaracterNegativoCIC CONSTANT VARCHAR(1) := 'p';
+--DECLARE cCaracterNegativoCIC CONSTANT VARCHAR(1) := 'p';
 DECLARE i_rev Number := 0; -- Número de ejecución
 DECLARE numLineasFichero Number := 0;
 
 -- VERSIONES
 --v02 - 
---v03 - Se añade RESIGNAL en el Exception handler
---v04 - Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
+--v03 - Se añade RESIGNAL en el Exception handler y se pone como constante el caracter negativo CIC
+--v04 - Se quita como constante el caracter negativo CIC
+--v05 - Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
 
 
 DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN 
-    --Actualizamos registro status = FAILED    
+	--Actualizamos registro status = FAILED    
     UPDATE EXT.REGISTRO_INTERFACES SET NUMREC = numLineasFichero, STATUS = 'FAILED', ENDTIME = current_timestamp, ERROR = LEFT(IFNULL( ::SQL_ERROR_MESSAGE, ''),1000) WHERE BATCHNAME = IN_FILENAME AND REV = i_rev;
 	
-	CALL LIB_GLOBAL_CESCE :w_debug ( i_Tenant,
+    CALL LIB_GLOBAL_CESCE :w_debug ( i_Tenant,
     'SQL ERROR_MESSAGE: ' || IFNULL( ::SQL_ERROR_MESSAGE, '') || '. SQL_ERROR_CODE: ' ||  ::SQL_ERROR_CODE,
     cReportTable,
     io_contador);
@@ -36,7 +37,6 @@ CALL LIB_GLOBAL_CESCE :w_debug(
     cReportTable,
     io_contador
 );
-
 
 
 -- En caso de reprocesamiento, se eliminan los registros que tienen como batchname el nombre del archivo reprocesado
@@ -57,12 +57,10 @@ SELECT IFNULL(MAX(REV),0) + 1 INTO i_rev FROM REGISTRO_INTERFACES WHERE BATCHNAM
 
 INSERT INTO REGISTRO_INTERFACES(BATCHNAME,REV,NUMREC,STARTTIME)
 VALUES(IN_FILENAME, i_rev, 0,current_timestamp);
+
 SELECT count(*) into numLineasFichero
 FROM (select distinct * FROM EXT.COMISIONES_RM_LOAD) ;
-
-
----------------------------------------------------------    
-
+---------------------------------------------------------   
 
 OPEN comrm;
 FOR i AS comrm DO 
@@ -183,7 +181,7 @@ VALUES
                 ) = 1 THEN 
                     CASE
                         WHEN RIGHT(SUBSTR(i.DATOS, 77, 18),1) = '0' THEN TO_DECIMAL(SUBSTR(i.DATOS, 77, 15) || '.' || SUBSTR(i.DATOS, 92, 2))
-                        WHEN RIGHT(SUBSTR(i.DATOS, 77, 18),1) = :cCaracterNegativoCIC THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 77, 15) || '.' || SUBSTR(i.DATOS, 92, 2))
+                        WHEN RIGHT(SUBSTR(i.DATOS, 77, 18),1) = 'p' THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 77, 15) || '.' || SUBSTR(i.DATOS, 92, 2))
                         ELSE NULL
                     END
                 ELSE NULL
@@ -203,7 +201,7 @@ VALUES
                 ) = 1 THEN 
                     CASE
                         WHEN RIGHT(SUBSTR(i.DATOS, 95, 18),1) = '0' THEN TO_DECIMAL(SUBSTR(i.DATOS, 95, 15) || '.' || SUBSTR(i.DATOS, 110, 2))
-                        WHEN RIGHT(SUBSTR(i.DATOS, 95, 18),1) = :cCaracterNegativoCIC THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 95, 15) || '.' || SUBSTR(i.DATOS, 110, 2))
+                        WHEN RIGHT(SUBSTR(i.DATOS, 95, 18),1) = 'p' THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 95, 15) || '.' || SUBSTR(i.DATOS, 110, 2))
                         ELSE NULL
                     END
                 ELSE NULL
@@ -223,7 +221,7 @@ VALUES
                 ) = 1 THEN 
                     CASE
                         WHEN RIGHT(SUBSTR(i.DATOS, 113, 18),1) = '0' THEN TO_DECIMAL(SUBSTR(i.DATOS, 113, 15) || '.' || SUBSTR(i.DATOS, 128, 2))
-                        WHEN RIGHT(SUBSTR(i.DATOS, 113, 18),1) = :cCaracterNegativoCIC THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 113, 15) || '.' || SUBSTR(i.DATOS, 128, 2))
+                        WHEN RIGHT(SUBSTR(i.DATOS, 113, 18),1) = 'p' THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 113, 15) || '.' || SUBSTR(i.DATOS, 128, 2))
                         ELSE NULL
                     END
                 ELSE NULL
@@ -243,7 +241,7 @@ VALUES
                 ) = 1 THEN 
                     CASE
                         WHEN RIGHT(SUBSTR(i.DATOS, 131, 18),1) = '0' THEN TO_DECIMAL(SUBSTR(i.DATOS, 131, 15) || '.' || SUBSTR(i.DATOS, 146, 2))
-                        WHEN RIGHT(SUBSTR(i.DATOS, 131, 18),1) = :cCaracterNegativoCIC THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 131, 15) || '.' || SUBSTR(i.DATOS, 146, 2))
+                        WHEN RIGHT(SUBSTR(i.DATOS, 131, 18),1) = 'p' THEN -1 * TO_DECIMAL(SUBSTR(i.DATOS, 131, 15) || '.' || SUBSTR(i.DATOS, 146, 2))
                         ELSE NULL
                     END
                 ELSE NULL
@@ -256,7 +254,6 @@ VALUES
     CURRENT_DATE,
     'PENDIENTE'
 );
-
 END FOR;
 CLOSE comrm;
 END IF;
