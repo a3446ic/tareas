@@ -1,0 +1,1 @@
+se añaden los campos LINENUMBER, SUBLINENUMBER, EVENTYPESEQ  a la tabla RETORNO_CONTABILIDAD y se recogen de la tabla TCMP.CS_SALESTRANSACTION
