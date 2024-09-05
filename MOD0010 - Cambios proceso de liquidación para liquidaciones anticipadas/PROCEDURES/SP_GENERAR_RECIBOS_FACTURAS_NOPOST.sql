@@ -1,4 +1,4 @@
-CREATE PROCEDURE "EXT"."SP_GENERAR_RECIBOS_FACTURAS_NOPOST" (IN pPlRunSeq BIGINT, IN actualizaOrder VARCHAR(1)  DEFAULT 'N') LANGUAGE SQLSCRIPT AS
+CREATE OR REPLACE PROCEDURE "EXT"."SP_GENERAR_RECIBOS_FACTURAS_NOPOST" (IN pPlRunSeq BIGINT, IN actualizaOrder VARCHAR(1)  DEFAULT 'N') LANGUAGE SQLSCRIPT AS
 BEGIN
 -- v2 se cambia CR.VALUE por CR.GENERICNUMBER3 que tiene el signo segun estado del recibo
 -- v3 check CR.GENERICNUMBER3
@@ -8,6 +8,7 @@ BEGIN
 -- v7 Actualizar VIA PAGO V para PORTUGAL
 -- v8 Modificar consulta de PAYMENTS y DEPOSIT por necesitada de union por tipo de valor porque se duplicaban en caso de monedas diferentes y se filtran IMPORTE_DET <> 0
 -- v9 Se generan detalles de recibos de facturas para depositos y pagos sin calculos
+-- v10 Se genera la fecha de alta con el día previo
 
 -- actualizaOrder 'S' o 'N' para enviar datos al order
 	DECLARE IdRecibo BIGINT;						
@@ -20,7 +21,7 @@ BEGIN
 	DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_GENERAR_RECIBOS_FACTURAS';
 	DECLARE vIdFactura BIGINT;
 	DECLARE batchname VARCHAR(50);
-	DECLARE cVersion CONSTANT VARCHAR(2) := '09';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '10';
 
 -- ----------------------------------------------------------------------------------------------------
 -- Cursor para insertar facturas a partir de los recibos
@@ -101,7 +102,8 @@ BEGIN
 			MODIF_USER
 		)
 		SELECT
-			CURRENT_DATE,
+			--CURRENT_DATE,
+			ADD_DAYS (CURRENT_DATE, -1) as FECHA_ALTA,
 			CASE WHEN pay.EARNINGCODEID = 'SIN_PAGO' THEN 'SIN_PAGO' ELSE  ec.DESCRIPTION END as DESCRIPTION, --CONCEPTO
 			pay.VALUE,
 			ut1.NAME,
@@ -461,7 +463,8 @@ BEGIN
 		)
 		VALUES(
 			referenciaFactura,
-			CURRENT_DATE,
+			--CURRENT_DATE,
+			r.FECHA_ALTA,
 			r.CONCEPTO,
 			r.IMPORTE,
 			r.MONEDA,
