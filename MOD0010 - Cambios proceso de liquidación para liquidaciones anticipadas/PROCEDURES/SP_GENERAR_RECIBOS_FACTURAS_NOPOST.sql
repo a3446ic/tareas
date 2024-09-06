@@ -9,6 +9,7 @@ BEGIN
 -- v8 Modificar consulta de PAYMENTS y DEPOSIT por necesitada de union por tipo de valor porque se duplicaban en caso de monedas diferentes y se filtran IMPORTE_DET <> 0
 -- v9 Se generan detalles de recibos de facturas para depositos y pagos sin calculos
 -- v10 Se genera la fecha de alta con el día previo
+-- v12
 
 -- actualizaOrder 'S' o 'N' para enviar datos al order
 	DECLARE IdRecibo BIGINT;						
@@ -21,7 +22,7 @@ BEGIN
 	DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_GENERAR_RECIBOS_FACTURAS';
 	DECLARE vIdFactura BIGINT;
 	DECLARE batchname VARCHAR(50);
-	DECLARE cVersion CONSTANT VARCHAR(2) := '10';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '12';
 
 -- ----------------------------------------------------------------------------------------------------
 -- Cursor para insertar facturas a partir de los recibos
@@ -131,16 +132,19 @@ BEGIN
 		FROM CS_PAYMENT pay 
 			INNER JOIN CS_APPLDEPOSITPAYMENTTRACE payapd on pay.PAYMENTSEQ = payapd.PAYMENTSEQ
 			INNER JOIN CS_APPLIEDDEPOSIT apd on payapd.APPLIEDDEPOSITSEQ = apd.APPLIEDDEPOSITSEQ
-			INNER JOIN CS_DEPOSITAPPLDEPOSITTRACE apddep ON apd.APPLIEDDEPOSITSEQ = apddep.APPLIEDDEPOSITSEQ AND
+			INNER JOIN CS_KPRDEPOSITAPPLDEPOSITTRACE apddep ON apd.APPLIEDDEPOSITSEQ = apddep.APPLIEDDEPOSITSEQ AND
 															apd.UNITTYPEFORVALUE= apddep.UNITTYPEFORCONTRIBUTIONVALUE --V08
-			INNER JOIN CS_DEPOSIT dep on apddep.DEPOSITSEQ = dep.DEPOSITSEQ and dep.NAME <> 'D_SP_Ajustes_Manuales'
+															AND apddep.KPRSEQ = pay.POSTPIPELINERUNSEQ
+			INNER JOIN CS_KPRDEPOSIT dep on apddep.DEPOSITSEQ = dep.DEPOSITSEQ 
+			AND dep.KPRSEQ = pay.POSTPIPELINERUNSEQ
+			and dep.NAME <> 'D_SP_Ajustes_Manuales'
 			LEFT JOIN CS_EARNINGCODE ec on pay.EARNINGCODEID = ec.EARNINGCODEID and ec.REMOVEDATE = TO_DATE('22000101','yyyymmdd') 
 			LEFT JOIN EXT.MODIFICAR_MEDIADOR med on pay.POSITIONSEQ = med.POSITIONSEQ 
 			LEFT JOIN CS_UNITTYPE ut1 on pay.UNITTYPEFORVALUE = ut1.UNITTYPESEQ and ut1.REMOVEDATE = TO_DATE('22000101','yyyymmdd')
 			LEFT JOIN EXT.FORMAS_PAGO fp on ( med.FORMA_PAGO || case when med.FACT_PROPIA = 1 then '1' else '0' end ) = fp.IDFORMAPAGO --se tiene en cuenta si es facturacion propia o no
 			LEFT JOIN EXT.SOCIEDADES_CESCE sc on sc.IDPAIS = (CASE WHEN dep.GENERICATTRIBUTE1='F' THEN 28 Else med.COD_PAIS END)
 		WHERE pay.PERIODSEQ = (SELECT PERIODSEQ FROM TCMP.CS_PLRUN where   PIPELINERUNSEQ = pPlRunSeq )
-			--AND pay.POSTPIPELINERUNDATE <> NULL
+			AND pay.POSTPIPELINERUNDATE <> NULL
 			AND pay.PAYMENTSEQ NOT IN (SELECT PAYMENTSEQ FROM EXT.RECIBOS_FACTURAS WHERE PAYMENTSEQ IS NOT NULL);
 	
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Insertados ' || To_VARCHAR(::ROWCOUNT)  || ' REGISTROS EN EXT.RECIBOS_FACTURAS ' , cReportTable, io_contador);
@@ -148,6 +152,19 @@ BEGIN
 -- ----------------------------------------------------------------------------------------------------
 -- Se obtienen los detalles de recibos de facturas insertados anteriormente
 -- ----------------------------------------------------------------------------------------------------
+		
+		-- Obtener los datos en una tabla previa
+		
+		IF (SELECT TABLE_NAME FROM SYS.TABLES where SCHEMA_NAME='EXT' and TABLE_NAME = 'DETALLE_RECIBOS_FACTURAS_TEMP' ) IS NULL THEN
+			EXEC('CREATE COLUMN TABLE EXT.DETALLE_RECIBOS_FACTURAS_TEMP  AS (SELECT * FROM EXT.DETALLE_RECIBOS_FACTURAS)');
+			CALL LIB_GLOBAL_CESCE :w_debug (
+				i_Tenant,
+				'Creado DETALLE_RECIBOS_FACTURAS_TEMP',
+				cReportTable,
+				io_contador
+			);
+		END IF;
+
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Se insertan datos de Detalles de Recibos en tabla EXT.DETALLE_RECIBOS_FACTURAS ' , cReportTable, io_contador);
 		-- Se insertan los recibos de facturas --
 		INSERT INTO EXT.DETALLE_RECIBOS_FACTURAS 
@@ -279,6 +296,53 @@ BEGIN
 										WHERE rfa.ESTADO ='NUEVO' );
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Insertados ' || To_VARCHAR(::ROWCOUNT)  || ' REGISTROS Sin calculos EN EXT.DETALLE_RECIBOS_FACTURAS ' , cReportTable, io_contador);
 
+----------------------------------------------------------------------------------------------------------------------
+-- Se insertan detalles desde la tabla temporal que no existan previamente en otra liquidación
+-- ----------------------------------------------------------------------------------------------------
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Se insertan Detalles de Recibos que no existan en otra liquidación. EXT.DETALLE_RECIBOS_FACTURAS ' , cReportTable, io_contador);
+		INSERT INTO EXT.DETALLE_RECIBOS_FACTURAS 
+		(
+			IDRECIBO,
+			MATERIAL,
+			POSITIONNAME,
+			IMPORTE_DET,
+			MONEDA_DET,
+			ORDERID,
+			LINENUMBER,
+			SUBLINENUMBER,
+			COD_OPERACION,
+			NUM_POLIZA,
+			NUM_RECIBO,
+			COD_AVAL,
+			PRODUCTID,
+			EVENTTYPEID,
+			CASEIDTXN,
+			ESTADO_DET,
+			MODIF_DATE
+		)
+		SELECT 
+			drft.IDRECIBO,
+			drft.MATERIAL,
+			drft.POSITIONNAME,
+			drft.IMPORTE_DET,
+			drft.MONEDA_DET,
+			drft.ORDERID,
+			drft.LINENUMBER,
+			drft.SUBLINENUMBER,
+			drft.COD_OPERACION,
+			drft.NUM_POLIZA,
+			drft.NUM_RECIBO,
+			drft.COD_AVAL,
+			drft.PRODUCTID,
+			drft.EVENTTYPEID,
+			drft.CASEIDTXN,
+			'PENDIENTE' as ESTADO_DET,
+			CURRENT_TIMESTAMP as MODIF_DATE
+		FROM EXT.DETALLE_RECIBOS_FACTURAS_TEMP drft INNER JOIN EXT.DETALLE_RECIBOS_FACTURAS drf ON drft.ORDERID = drf.ORDERID AND drft.LINENUMBER = drf.LINENUMBER AND drft.SUBLINENUMBER = drf.SUBLINENUMBER
+		WHERE drf.ORDERID IS NULL AND drf.LINENUMBER IS NULL AND drf.SUBLINENUMBER IS NULL;
+
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Insertados ' || To_VARCHAR(::ROWCOUNT)  || ' REGISTROS que no existen en otra liquidación EN EXT.DETALLE_RECIBOS_FACTURAS ' , cReportTable, io_contador);
+------------------------------------------------
 
 	 IF actualizaOrder = 'S' THEN
 		SELECT 'LIQUIDACION_' || TO_VARCHAR(CURRENT_TIMESTAMP, 'YYYYMMDDHH24MISS')||'.txt' INTO batchname FROM DUMMY;
@@ -498,5 +562,16 @@ BEGIN
 
 	END FOR;
 --	CLOSE recibos;
+------------------------------------------------------------------------
+----  Borramos tabla temporal EXT.DETALLE_RECIBOS_FACTURAS_TEMP --------
+------------------------------------------------------------------------
+
+	DROP TABLE EXT.DETALLE_RECIBOS_FACTURAS_TEMP;
+	CALL EXT.LIB_GLOBAL_CESCE :w_debug (
+		i_Tenant,
+		'Borrada tabla temporal EXT.DETALLE_RECIBOS_FACTURAS_TEMP',
+		cReportTable,
+		io_contador
+	);
 
 END
