@@ -174,9 +174,26 @@ def queryDatosSAPFI(def campos, def datosBanco, def datosProveedor, def nombreCo
   
   columnas += ', "EMAIL"';
   valores += ", '" + email + "'";
-  columnas += ', "CODIGO_FISCAL"';
- 
-  valores += ", '" + campos['identFiscal']?.trim()?.take(16) + "'"; 
+  ////////////////////////////////////////////////////////////////////////////////////
+  //INC0063219 SMM - Para las BU de Chile añadir carácter '-' antes del último dígito
+  //columnas += ', "CODIGO_FISCAL"'; 
+  //valores += ", '" + campos['identFiscal']?.trim()?.take(16) + "'"; 
+
+  def bu = campos['businessUnit'].toUpperCase();
+  def identFiscal = campos['identFiscal']?.trim()?.take(16) 
+  columnas += campos['identFiscal'] ? ', "CODIGO_FISCAL"' : '';
+       
+  if (bu == 'CHILE'){
+    if (identFiscal && identFiscal[-2] != '-'){
+            identFiscal = identFiscal.substring(0, identFiscal.length() - 1) + '-' + identFiscal[-1];
+            //valores += campos['identFiscal'] ? ", '" + identFiscal + "'" : '';      
+    } 
+    valores += campos['identFiscal'] ? ", '" + identFiscal + "'" : '';         
+  }
+  else {
+      valores += campos['identFiscal'] ? ", '" + identFiscal + "'" : '';      
+  }
+ ////////////////////////////////////////////////////////////////////////////////////
   columnas += ', "PERSONA_FISICA"';
   valores += (campos['naturaleza'] == 'PF') ? ", 'X'" : ", '' "; 
   columnas += ', "RAMO"';
