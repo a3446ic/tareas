@@ -1,0 +1,8 @@
+TABLAS
+    REGISTRO_INTERFACES: Nueva. PK (BATCHNAME,REV) 
+    EXT_MOVIMIENTO_RECIBOS_NO_VALIDADAS: Modificación. Se modifica el orden del campo BATCHNAME
+
+PROCEDIMIENTOS:
+    SP_CARGA_MOVIMIENTO_RECIBOS: Modificación v13. Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
+    SP_COMISIONES_RM_HIST: Modificación v4. Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
+    SP_MOVIMIENTOS_HIST: Modificación v11. Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga

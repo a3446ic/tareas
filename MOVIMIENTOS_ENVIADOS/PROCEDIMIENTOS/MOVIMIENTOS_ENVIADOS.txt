@@ -1,0 +1,2 @@
+Si hay múltiples mediadores de traspaso se actualiza el registro con el nuevo mediador 
+Se crea una opción para updatear dependiendo si hay registroExistente y mediadoresTraspaso
