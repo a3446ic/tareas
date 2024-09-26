@@ -155,8 +155,11 @@ def query(def campos, def datosBanco, def datosProveedor, def datosSAPFI, def da
   columnas += campos['email'] ? ', "EMAIL"' : '';
   valores += campos['email'] ? ", '" + campos['email']?.trim()?.take(241) + "'" : '';
   
-  /////////////////////////////////////////////////////////////////////////////////////////////////////
-  /////////////////////////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////////
+  //INC0063219 SMM - Para las BU de Chile añadir carácter '-' antes del último dígito
+  //columnas += ', "CODIGO_FISCAL"'; 
+  //valores += ", '" + campos['identFiscal']?.trim()?.take(16) + "'"; 
+
   def bu = campos['businessUnit'].toUpperCase();
   def identFiscal = campos['identFiscal']?.trim()?.take(16) 
   columnas += campos['identFiscal'] ? ', "CODIGO_FISCAL"' : '';
@@ -171,10 +174,7 @@ def query(def campos, def datosBanco, def datosProveedor, def datosSAPFI, def da
   else {
       valores += campos['identFiscal'] ? ", '" + identFiscal + "'" : '';      
   }
- /////////////////////////////////////////////////////////////////////////////////////////////////////
- /////////////////////////////////////////////////////////////////////////////////////////////////////
-  //columnas += campos['identFiscal'] ? ', "CODIGO_FISCAL"' : '';
-  //valores += campos['identFiscal'] ? ", '" + campos['identFiscal']?.trim()?.take(16) + "'" : '';
+ ////////////////////////////////////////////////////////////////////////////////////
   
   columnas += ', "PERSONA_FISICA"';
   valores += (campos['naturaleza'] == 'PF') ? ", 'X'" : ", ''";
