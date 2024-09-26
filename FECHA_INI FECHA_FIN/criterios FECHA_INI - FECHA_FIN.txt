@@ -1,0 +1,86 @@
+Tablas:
+- EXT_MOVIMIENTO_CARTERA_CREDITO_HIST:
+    - FECHA_INI tipo DATE admite NULL
+    - FECHA_FIN tipo DATE admite NULL
+
+- EXT_MOVIMIENTO_FIANZAS_CAUCION_HIST:
+    - FECHA_INI_COBERTURA tipo DATE admite NULL
+    - FECHA_FIN_COBERTURA tipo DATE admite NULL
+
+- CARTERA:
+    - FECHA_INICIO tipo DATE NO admite NULL
+    - FECHA_FIN tipo DATE admite NULL
+
+Procedimientos:
+- SP_MOVIMIENTOS_HIST
+    - MVCAR:
+        - FECHA_INI:
+            (SELECT 
+            CASE WHEN (i.FECHA_INI IS NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY ) = 1) THEN
+                TO_DATE(i.FECHA_FIN,'YYYYMMDD')
+            ELSE
+                CASE WHEN (i.FECHA_FIN IS NULL AND TO_DATE(i.FECHA_INI, 'YYYYMMDD') > TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD') AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY ) = 1) THEN
+                    TO_DATE(i.FECHA_VENCIMIENTO,'YYYYMMDD')
+                ELSE
+                    CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_INI) FROM DUMMY ) = 1 THEN 
+                        TO_DATE(i.FECHA_INI, 'YYYYMMDD')
+                    ELSE
+                        CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_EFECTO) FROM DUMMY ) = 1 THEN
+                            TO_DATE(i.FECHA_EFECTO, 'YYYYMMDD')
+                        ELSE
+                            TO_DATE(i.FECHA_EMISION, 'YYYYMMDD')
+                        END
+                    END
+                END
+            END
+        FROM DUMMY),
+
+        - FECHA_FIN:
+            (SELECT 
+            CASE WHEN (i.FECHA_FIN IS NOT NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY) = 1) THEN
+                TO_DATE(i.FECHA_FIN, 'YYYYMMDD')
+            ELSE
+                CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY) = 1  THEN
+                    TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD')
+                ELSE
+                    NULL
+                END
+            END
+        FROM DUMMY),
+    
+    - MVFID:
+        - FECHA_INI_COBERTURA:
+            (
+            SELECT
+                CASE
+                    WHEN (
+                        SELECT
+                            OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_INI_COBERTURA)
+                        FROM
+                            DUMMY
+                    ) = 1 THEN TO_DATE(i.FECHA_INI_COBERTURA)
+                    ELSE NULL
+                END
+            FROM
+                DUMMY
+        ),
+
+        - FECHA_FIN_COBERTURA:
+            (
+                SELECT
+                    CASE
+                        WHEN (
+                            SELECT
+                                OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN_COBERTURA)
+                            FROM
+                                DUMMY
+                        ) = 1 THEN TO_DATE(i.FECHA_FIN_COBERTURA)
+                        ELSE NULL
+                    END
+                FROM
+                    DUMMY
+            ),
+
+
+
+
