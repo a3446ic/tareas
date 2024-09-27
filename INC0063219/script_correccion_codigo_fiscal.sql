@@ -1,6 +1,11 @@
-select codigo_fiscal
-,concat(concat(substring(codigo_fiscal,0,length(codigo_fiscal)-1),'-'),right(codigo_fiscal,1)) 
-,substring(codigo_fiscal,length(codigo_fiscal)-1,1)
-, case when substring(codigo_fiscal,length(codigo_fiscal)-1,1) != '-' then concat(concat(substring(codigo_fiscal,0,length(codigo_fiscal)-1),'-'),right(codigo_fiscal,1)) 
-else codigo_fiscal end
-from ext.proveedores_sapfi where pais_iso = 'CL'
+SELECT CODIGO_FISCAL
+, CASE WHEN SUBSTRING(CODIGO_FISCAL,LENGTH(CODIGO_FISCAL)-1,1) != '-' THEN CONCAT(CONCAT(SUBSTRING(CODIGO_FISCAL,0,LENGTH(CODIGO_FISCAL)-1),'-'),RIGHT(CODIGO_FISCAL,1)) 
+ELSE CODIGO_FISCAL END
+from EXT.PROVEEDORES_SAPFI_SMM WHERE PAIS_ISO = 'CL';
+
+
+
+UPDATE EXT.PROVEEDORES_SAPFI SET ESTADO = 'PTE_ENVIO', USER = 'NewPortalAdmin', MODIF_DATE = CURRENT_TIMESTAMP, 
+CODIGO_FISCAL = CASE WHEN SUBSTRING(CODIGO_FISCAL,LENGTH(CODIGO_FISCAL)-1,1) != '-' THEN CONCAT(CONCAT(SUBSTRING(CODIGO_FISCAL,0,LENGTH(CODIGO_FISCAL)-1),'-'),RIGHT(CODIGO_FISCAL,1)) 
+	ELSE CODIGO_FISCAL END
+WHERE PAIS_ISO = 'CL';
