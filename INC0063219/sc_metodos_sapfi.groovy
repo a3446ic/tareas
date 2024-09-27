@@ -66,8 +66,7 @@ def getDatosProveedor(def datosBanco, def datosSAPFI, def datosPais, def campos)
       datosProveedor['grupoCuentas'] = 'PLAT'
     }
 	//España
-    if(['CE01','CE14'].contains(datosSAPFI.SOCIEDAD?.toUpperCase())){
-      if(datosPais.PAIS == 'España'){
+    if(['CE01','CE14'].contains(datosSAPFI.SOCIEDAD?.toUpperCase()) && datosPais.PAIS == 'España'){
         if(campos['formaPago'] == '1'){
           datosProveedor['viaPago'] = 'E';
           datosProveedor['condicionPago'] = '000E';
@@ -85,15 +84,12 @@ def getDatosProveedor(def datosBanco, def datosSAPFI, def datosPais, def campos)
             }
           }
         }
-      }
     }
       
     //Portugal
-    else if(['CE03','CE14'].contains(datosSAPFI.SOCIEDAD?.toUpperCase())){
-  	  if(datosPais.PAIS == 'Portugal'){
+    else if(['CE03','CE14'].contains(datosSAPFI.SOCIEDAD?.toUpperCase()) && datosPais.PAIS == 'Portugal'){
        datosProveedor['viaPago'] = 'V';
        datosProveedor['condicionPago'] = '000V';
-      }
     }
   
   	else{
