@@ -1,0 +1,7 @@
+Por otro lado, hay que plantear una reingeniería de la tabla CARTERA (pongo unas notas sobre las que iremos trabajando) :
+
+1. guardar en HIST de MVCAR las fecha de INI y FIN que vienen en el fichero (blanco si llega blanco o valor) pero no completar con Fecha Efecto o Fecha vencimiento
+2. Crear los registros de EXPEDIENTE para CAUCION (tienen numero de póliza/expediente y de el cuelgan n Avales/fianzas que tienen el mismo numero Poliza/expediente)
+3. Gestionar las fechas de intermediación FECHA INICIO y FECHA FIN para todas las anualidades de la misma poliza a la vez
+4. Revisar los diferentes tipos de TRASPASOS (Workflow de traspasos) para gestionar correctamente las fechas de las pólizas. Añadir funciones de revocación de traspasos futuros.
+5. Una vez claros los 4 pasos anteriores, Actualizar la tabla CARTERA con las fechas de intermediación REALES enviadas por CESCE
