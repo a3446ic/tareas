@@ -15,8 +15,15 @@ def proveedorSapfi(def campos, def datosSAPFI, def modificacion, def caseId, def
   def nombreCompleto = (campos['nombre']?:'') + ' ' + (campos['lastName']?:'');
   
   // ELIMINAR REGISTRO SI YA EXISTE:
-  def codFiscal = campos['identFiscal'];
-  def queryDelete = "DELETE FROM EXT.PROVEEDORES_SAPFI WHERE CODIGO_FISCAL = '$codFiscal' AND ESTADO = 'PTE_ENVIO'"
+  def bu = campos['businessUnit']?.toUpperCase();
+  def identFiscal = campos['identFiscal'];
+  if (bu == 'CHILE'){
+    if (identFiscal && identFiscal[-2] != '-'){
+       identFiscal = identFiscal.substring(0, identFiscal.length() - 1) + '-' + identFiscal[-1];
+    } 
+  }
+  
+  def queryDelete = "DELETE FROM EXT.PROVEEDORES_SAPFI WHERE CODIGO_FISCAL = '$identFiscal' AND ESTADO = 'PTE_ENVIO'"
   logger.info('queryDelete: ' + queryDelete)
   db.execute(queryDelete)
   
