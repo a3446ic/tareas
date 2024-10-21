@@ -885,7 +885,7 @@
 		},
 		"elements": {
 			"CODIGO": {
-				"@Common.Label": "CÓDIGO",
+				"@Common.Label": "CODIGO",
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},	
@@ -896,16 +896,11 @@
 			},
 			"IDRECIBO": {
 				"@Common.Label": "IDRECIBO",
-				"type": "cds.Integer",
+				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},			
 			"SOCIEDAD": {
 				"@Common.Label": "SOCIEDAD",
-				"type": "cds.String",
-				"@Analytics.Dimension": true
-			},	
-			"PAIS": {
-				"@Common.Label": "PAIS",
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},	
@@ -915,23 +910,23 @@
 				"@Analytics.Dimension": true
 			},	
 			"FECHA_RECIBO_LIQUIDACION": {
-				"@Common.Label": "FECHA RECIBO LIQUIDACION",
+				"@Common.Label": "FECHA_RECIBO_LIQUIDACION",
 				"type": "cds.Timestamp",
 				"@Analytics.Dimension": true
-			},				
-			"NUM_FACTURA": {
-				"@Common.Label": "NUM FACTURA",
+			},	
+			"ESTADO": {
+				"@Common.Label": "ESTADO",
+				"type": "cds.String",
+				"@Analytics.Dimension": true
+			},	
+			"REFERENCIA": {
+				"@Common.Label": "REFERENCIA",
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},	
 			"FECHA_FACTURA": {
-				"@Common.Label": "FECHA FACTURA",
+				"@Common.Label": "FECHA_FACTURA",
 				"type": "cds.Timestamp",
-				"@Analytics.Dimension": true
-			},				
-			"MESCIERRE": {
-				"@Common.Label": "MESCIERRE",
-				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},				
 			"MONEDA": {
@@ -940,7 +935,7 @@
 				"@Analytics.Dimension": true
 			},	
 			"IMPORTE_COBRADA": {
-				"@Common.Label": "IMPORTE FACTURADO",
+				"@Common.Label": "IMPORTE_COBRADA",
 				"type": "cds.DecimalFloat",
 				"@Analytics.Measure": true
 			},	
@@ -965,7 +960,7 @@
 		},
 		"elements": {
 			"CODIGO": {
-				"@Common.Label": "CÓDIGO",
+				"@Common.Label": "CODIGO",
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},	
@@ -976,16 +971,11 @@
 			},
 			"IDRECIBO": {
 				"@Common.Label": "IDRECIBO",
-				"type": "cds.Integer",
+				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},		
 			"IDPAIS": {
 				"@Common.Label": "IDPAIS",
-				"type": "cds.String",
-				"@Analytics.Dimension": true
-			},
-			"PAIS": {
-				"@Common.Label": "PAIS",
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},
@@ -1024,7 +1014,7 @@
 				"type": "cds.String",
 				"@Analytics.Dimension": true
 			},					
-            "NUM_FACTURA": {
+            "REFERENCIA": {
                 "@Common.Label": "NUM. FACTURA",
                 "type": "cds.String",
                 "@Analytics.Dimension": true
@@ -1038,12 +1028,7 @@
 				"@Common.Label": "FECHA COBRO",
 				"type": "cds.Timestamp",
 				"@Analytics.Dimension": true
-			},
-			"MESCIERRE": {
-				"@Common.Label": "MESCIERRE",
-				"type": "cds.String",
-				"@Analytics.Dimension": true
-			},				
+			},	
             "MONEDA": {
                 "@Common.Label": "MONEDA",
                 "type": "cds.String",
@@ -1070,12 +1055,12 @@
                 "@Analytics.Dimension": true
             },					
 			"IMPORTE_COBRADA": {
-				"@Common.Label": "IMPORTE FACTURADO",
+				"@Common.Label": "IMPORTE_COBRADA",
 				"type": "cds.DecimalFloat",
 				"@Analytics.Measure": true
 			},	
 			"IMPORTE_COM_COBRADA": {
-				"@Common.Label": "IMPORTE COMISIÓN",
+				"@Common.Label": "IMPORTE_COM_COBRADA",
 				"type": "cds.DecimalFloat",
 				"@Analytics.Measure": true
 			},	
