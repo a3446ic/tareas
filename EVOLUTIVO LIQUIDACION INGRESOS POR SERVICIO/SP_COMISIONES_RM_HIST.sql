@@ -1,7 +1,7 @@
 CREATE PROCEDURE "EXT"."SP_COMISIONES_RM_HIST" (IN IN_FILENAME Varchar(120)) LANGUAGE SQLSCRIPT SQL SECURITY DEFINER DEFAULT SCHEMA "EXT" AS BEGIN DECLARE io_contador Number := 0;
 
 DECLARE i_Tenant VARCHAR(127);
-DECLARE cVersion CONSTANT VARCHAR(2) := '05';
+DECLARE cVersion CONSTANT VARCHAR(2) := '06';
 DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_COMISIONES_RM_HIST' || ' ' || cVersion;
 
 --DECLARE cCaracterNegativoCIC CONSTANT VARCHAR(1) := 'p';
@@ -13,6 +13,7 @@ DECLARE numLineasFichero Number := 0;
 --v03 - Se añade RESIGNAL en el Exception handler y se pone como constante el caracter negativo CIC
 --v04 - Se quita como constante el caracter negativo CIC
 --v05 - Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
+--v06 - Llamada procedimiento creación vistas EA Liquidación por servicios
 
 
 DECLARE EXIT HANDLER FOR SQLEXCEPTION BEGIN 
@@ -267,6 +268,9 @@ CALL LIB_GLOBAL_CESCE :w_debug (
 COMMIT;
 
 CALL EXT.SP_CARGAR_COMISIONES_RM();
+
+--Llamada procedimiento creación vistas EA Liquidación por servicio
+CALL EXT.SP_INF_LIQUIDACION_RM(IN_FILENAME);
 
 --Actualizamos registro status = SUCCESS
 UPDATE EXT.REGISTRO_INTERFACES SET NUMREC = numLineasFichero, STATUS = 'SUCCESS', ENDTIME = current_timestamp WHERE BATCHNAME = IN_FILENAME AND REV = :i_rev;
