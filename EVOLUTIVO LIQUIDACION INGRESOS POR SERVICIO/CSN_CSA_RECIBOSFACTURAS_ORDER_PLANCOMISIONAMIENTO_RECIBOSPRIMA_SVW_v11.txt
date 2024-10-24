@@ -943,7 +943,12 @@
 				"@Common.Label": "IMPORTE FACTURADO",
 				"type": "cds.DecimalFloat",
 				"@Analytics.Measure": true
-			},	
+			},
+			"IMPORTE_COM_COBRADA": {
+				"@Common.Label": "IMPORTE COMISIÓN",
+				"type": "cds.DecimalFloat",
+				"@Analytics.Measure": true
+			},		
 			"PERIODSEQ": {
 				"@Common.Label": "PERIODSEQ",
 				"type": "cds.String",
