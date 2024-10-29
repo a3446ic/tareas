@@ -5,9 +5,9 @@ CREATE OR REPLACE PROCEDURE "EXT"."SP_INF_LIQUIDACION_RM"(IN IN_FILENAME VARCHAR
 	| Company: Inycom 
 	| Initial Version Date: 15-Oct-2024 
 	|---------------------------------------------------------------------------------------------- 
-	| Procedure Purpose: Disponer de una auditoria de los cambios entre periodos en la información de PARTICIPANT
+	| Procedure Purpose: Cargar datos de los ficheros CORM
 	| 
-	| Version: 1.0	AIH Original 
+	| Version: 1.0	
 	|
 	----------------------------------------------------------------------------------------------- 
 */
