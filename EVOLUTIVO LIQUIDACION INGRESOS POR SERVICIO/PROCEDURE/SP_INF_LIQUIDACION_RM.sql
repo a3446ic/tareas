@@ -7,7 +7,8 @@ CREATE OR REPLACE PROCEDURE "EXT"."SP_INF_LIQUIDACION_RM"(IN IN_FILENAME VARCHAR
 	|---------------------------------------------------------------------------------------------- 
 	| Procedure Purpose: Cargar datos de los ficheros CORM
 	| 
-	| Version: 1.0	AIH Original 
+	| Version: 1	
+	| 
 	|
 	----------------------------------------------------------------------------------------------- 
 */
