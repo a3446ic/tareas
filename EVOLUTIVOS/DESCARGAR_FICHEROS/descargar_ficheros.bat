@@ -49,7 +49,7 @@ if not exist %DEST_DIR_OUT% (
     echo Carpeta %DEST_DIR_OUT% ya existe. >> %LOG%
 )
 
-REM Crear la carpeta de destino BAD si no existe
+REM Crear la carpeta de destino BAD_FILE si no existe
 if not exist %DEST_DIR_BAD% (
     mkdir %DEST_DIR_BAD%
     echo Carpeta %DEST_DIR_BAD% creada. >> %LOG%
