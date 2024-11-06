@@ -62,6 +62,9 @@ if not exist %DEST_DIR_BAD% (
 echo INICIANDO CONEXIÓN %date% %time% >> %LOG%
 
 
+
+
+
 REM Ejecutar WinSCP con los comandos integrados en el batch
 %WINSCP_PATH% -log=%LOG% /nointeractiveinput /command ^
     "open %SFTP_SERVER% " ^
