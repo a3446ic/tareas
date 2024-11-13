@@ -2,6 +2,11 @@
 chcp 65001
 setlocal enabledelayedexpansion
 
+::-----------------------------------------------------------------
+:: Tiene que estar arrancado el pageant y añadida la clave
+:: Pass: CescePr@d
+::-----------------------------------------------------------------
+
 :: Configuración de la ruta de WinSCP y detalles de conexión
 set WINSCP_PATH="C:\Program Files (x86)\WinSCP\WinSCP.com"
 set SFTP_SERVER=sftp://2111:CescePr@d@xfer-prd-fra.calliduscloud.com/
