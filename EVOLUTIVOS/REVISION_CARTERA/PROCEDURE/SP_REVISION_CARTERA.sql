@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.SP_REVISION_CARTERA_V3 LANGUAGE SQLSCRIPT AS
+CREATE OR REPLACE PROCEDURE EXT.SP_REVISION_CARTERA LANGUAGE SQLSCRIPT AS
 /*
 	----------------------------------------------------------------------------------------------- 
 	| Author: Samuel Miralles Manresa 
