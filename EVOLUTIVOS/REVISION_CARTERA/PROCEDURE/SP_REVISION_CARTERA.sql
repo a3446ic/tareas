@@ -45,25 +45,25 @@ BEGIN
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     
-    DECLARE caso1 varchar(100) := 'CASO 1 POLIZA CREDITO, UN SOLO MEDIADOR SIN TRASPASOS';
+    DECLARE caso1 varchar(100)  := 'CASO 1 POLIZA CREDITO, UN SOLO MEDIADOR SIN TRASPASOS';
     DECLARE caso01 varchar(100) := 'CASO 0.1 - NO EXISTE PÓLIZA';
     DECLARE caso10 varchar(100) := 'CASO 1.0 >>> 1 POLIZA - 1 MEDIADOR -> FALTA POSITIONNAME';
     DECLARE caso11 varchar(100) := 'CASO 1.1 >>> 1 POLIZA - 1 MEDIADOR -> MISMO MEDIADOR';
     DECLARE caso12 varchar(100) := 'CASO 1.2 >>> 1 POLIZA - 1 MEDIADOR -> DISTINTO MEDIADOR';
 
-    DECLARE caso2 varchar(100) := 'CASO 2 POLIZA CREDITO, N MEDIADORES SIN TRASPASOS';
+    DECLARE caso2 varchar(100)  := 'CASO 2 POLIZA CREDITO, N MEDIADORES SIN TRASPASOS';
     DECLARE caso02 varchar(100) := 'CASO 0.2 - NO EXISTE PÓLIZA';
     DECLARE caso20 varchar(100) := 'CASO 2.0 >>> 1 POLIZA - N MEDIADOR SIN TRASPASOS -> FALTA POSITIONNAME';
     DECLARE caso21 varchar(100) := 'CASO 2.1 >>> 1 POLIZA - N MEDIADOR SIN TRASPASOS -> MISMO MEDIADOR';
     DECLARE caso22 varchar(100) := 'CASO 2.2 >>> 1 POLIZA - N MEDIADOR SIN TRASPASOS -> DISTINTO MEDIADOR';
 
-    DECLARE caso3 varchar(100) := 'CASO 3 POLIZA CREDITO, N MEDIADORES CON TRASPASOS';
+    DECLARE caso3 varchar(100)  := 'CASO 3 POLIZA CREDITO, N MEDIADORES CON TRASPASOS';
     DECLARE caso03 varchar(100) := 'CASO 0.3 - NO EXISTE PÓLIZA';
     DECLARE caso30 varchar(100) := 'CASO 3.0 >>> 1 POLIZA - N MEDIADOR CON TRASPASOS -> FALTA POSITIONNAME';
     DECLARE caso31 varchar(100) := 'CASO 3.1 >>> 1 POLIZA - N MEDIADOR CON TRASPASOS -> MISMO MEDIADOR';
     DECLARE caso32 varchar(100) := 'CASO 3.2 >>> 1 POLIZA - N MEDIADOR CON TRASPASOS -> DISTINTO MEDIADOR';
     
-    DECLARE caso4 varchar(100) := 'CASO 1 POLIZA CAUCIÓN, UN SOLO MEDIADOR SIN TRASPASOS';
+    DECLARE caso4 varchar(100)  := 'CASO 1 POLIZA CAUCIÓN, UN SOLO MEDIADOR SIN TRASPASOS';
     DECLARE caso04 varchar(100) := 'CASO 0.4 - NO EXISTE PÓLIZA';
     DECLARE caso40 varchar(100) := 'CASO 4.0 >>> 1 POLIZA - 1 MEDIADOR -> FALTA POSITIONNAME';
     DECLARE caso41 varchar(100) := 'CASO 4.1 >>> 1 POLIZA - 1 MEDIADOR -> MISMO MEDIADOR';
@@ -215,10 +215,10 @@ BEGIN
     FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
 
     
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso01 || ' Insertados ' || cantRegistros01 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso10 || ' Insertados ' || cantRegistros10 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso11 || ' Insertados ' || cantRegistros11 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso12 || ' Insertados ' || cantRegistros12 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso01 || ' Insertados ' || cantRegistros01 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso10 || ' Insertados ' || cantRegistros10 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso11 || ' Insertados ' || cantRegistros11 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso12 || ' Insertados ' || cantRegistros12 || ' registros', cReport, io_contador);
 
     
 
@@ -289,10 +289,10 @@ BEGIN
     FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
 
     
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso02 || ' Insertados ' || cantRegistros02 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso20 || ' Insertados ' || cantRegistros20 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso21 || ' Insertados ' || cantRegistros21 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso22 || ' Insertados ' || cantRegistros22 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso02 || ' Insertados ' || cantRegistros02 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso20 || ' Insertados ' || cantRegistros20 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso21 || ' Insertados ' || cantRegistros21 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso22 || ' Insertados ' || cantRegistros22 || ' registros', cReport, io_contador);
 
 
     
@@ -354,10 +354,10 @@ BEGIN
     FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
 
     -- Obtener registros insertados para debug
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso03 || ' Insertados ' || cantRegistros03 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso30 || ' Insertados ' || cantRegistros30 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso31 || ' Insertados ' || cantRegistros31 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso32 || ' Insertados ' || cantRegistros32 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso03 || ' Insertados ' || cantRegistros03 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso30 || ' Insertados ' || cantRegistros30 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso31 || ' Insertados ' || cantRegistros31 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso32 || ' Insertados ' || cantRegistros32 || ' registros', cReport, io_contador);
 
 
 
@@ -428,10 +428,10 @@ BEGIN
     FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CAUCION';
 
     
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso04 || ' Insertados ' || cantRegistros04 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso40 || ' Insertados ' || cantRegistros40 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso41 || ' Insertados ' || cantRegistros41 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso42 || ' Insertados ' || cantRegistros42 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso04 || ' Insertados ' || cantRegistros04 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso40 || ' Insertados ' || cantRegistros40 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso41 || ' Insertados ' || cantRegistros41 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso42 || ' Insertados ' || cantRegistros42 || ' registros', cReport, io_contador);
     
     INSERT INTO EXT.CARTERA_OBJ_TEMP(RAMO, NUM_POLIZA,IDMODALIDAD,NUM_EXPEDIENTE,IDPAIS,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO_TEMP,FECHA_FIN_TEMP,ACTIVO
     	, IDPRODUCT
@@ -439,8 +439,6 @@ BEGIN
     	, FECHA_INICIO
     	, FECHA_FIN
     	, MODIF_CASE
-    	, MODIF_USER
-    	, MODIF_SOURCE
     )
     SELECT RAMO, NUM_POLIZA,IDMODALIDAD,NUM_EXPEDIENTE,IDPAIS,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO_TEMP,FECHA_FIN_TEMP,ACTIVO
     	, '' IDPRODUCT
@@ -448,10 +446,7 @@ BEGIN
     	, FECHA_INICIO_TEMP FECHA_INICIO
     	, FECHA_FIN_TEMP FECHA_FIN
     	, MODIF_CASE
-    	, 'XX' MODIF_USER
-    	, 'XX' MODIF_SOURCE
-	FROM EXT.CARTERA_OBJ_TEMP
-	--WHERE NUM_POLIZA = 1007313
+	FROM EXT.CARTERA_OBJ_TEMP	
 	WHERE MODIF_CASE NOT IN (caso04,caso40)
 	AND RAMO = 'CAUCION'
 	GROUP BY RAMO, NUM_POLIZA,IDMODALIDAD,NUM_EXPEDIENTE,IDPAIS,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO_TEMP,FECHA_FIN_TEMP,ACTIVO,MODIF_CASE;
