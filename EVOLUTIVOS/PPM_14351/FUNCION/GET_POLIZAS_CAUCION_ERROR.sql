@@ -1,12 +1,12 @@
-CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CAUCION_ERROR(IN_FILENAME VARCHAR(250)) 
+CREATE FUNCTION EXT.GET_POLIZAS_CAUCION_ERROR() 
 /*
 	----------------------------------------------------------------------------------------------- 
 	| Author: Samuel Miralles Manresa 
 	| Company: Inycom 
 	| Initial Version Date: 27-Nov-2024 
 	|---------------------------------------------------------------------------------------------- 
-	| Parámetro de entrada: fichero MVFID
-    | Muestra los registros del fichero de entrada que no coinciden en cartera
+	| 
+    | Muestra los registros que no existen en cartera
 	| 
 	| Version: 1	
 	| 
@@ -50,10 +50,10 @@ CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CAUCION_ERROR(IN_FILENAME VARCHAR(250
 				, M.FECHA_FIN_COBERTURA AS FECHA_FIN
 				, M.BATCHNAME
 			FROM EXT.EXT_MOVIMIENTO_FIANZAS_CAUCION_HIST M
-			WHERE M.BATCHNAME = IN_FILENAME
+			WHERE M.BATCHNAME IN (SELECT BATCHNAME FROM EXT.REGISTRO_INTERFACES WHERE NOTIFICATION = 0 AND BATCHNAME LIKE '%MVFID%') 
 			AND NOT EXISTS(SELECT 1 FROM EXT.CARTERA WHERE RAMO = 'CAUCION' AND NUM_POLIZA = M.NUM_POLIZA AND NUM_FIANZA = M.NUM_AVAL_FIANZA
 						AND M.IDMEDIADOR = COD_MEDIADOR||'-'||COD_SUBCLAVE AND M.FECHA_EFECTO = FECHA_EFECTO AND M.FECHA_VENCIMIENTO = FECHA_VENCIMIENTO)
 
 			;
 		
-	END;
+	END
