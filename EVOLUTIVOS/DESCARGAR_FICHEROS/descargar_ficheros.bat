@@ -26,9 +26,9 @@ set LogName=%Day%%Month%%Year%
 set DEST_DIR_IN="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Inbound_Files"
 set DEST_DIR_IN_TEST="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Inbound_Files\test"
 set DEST_DIR_OUT="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Outbound_Files"
-set DEST_DIR_IN_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02. Documentación Soporte\0203.Inbound_Files"
-set DEST_DIR_IN_PRD_TEST="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02. Documentación Soporte\0203.Inbound_Files\test"
-set DEST_DIR_OUT_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02. Documentación Soporte\0203.Outbound Files"
+set DEST_DIR_IN_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files"
+set DEST_DIR_IN_PRD_TEST="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files\test"
+set DEST_DIR_OUT_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Outbound Files"
 set DEST_DIR_BAD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Bad_Files"
 set LOG_PATH="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\log"
 set LOG=%LOG_PATH%\log%LogName%.txt
@@ -178,8 +178,10 @@ if errorlevel 1 (
     echo SE ENCONTRARON ERRRORES DURANTE LA EJECUCIÓN >> %LOG%
     
 ) else (
+    echo /*************************************/ >> %LOG%
     echo PROCESO COMPLETADO CON EXITO >> %LOG%
     echo DESCARGA COMPLETADA >> %LOG%
+    echo /*************************************/ >> %LOG%
 )
 
 :: pause

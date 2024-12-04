@@ -1,12 +1,12 @@
-CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR(IN_FILENAME VARCHAR(250)) 
+CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR() 
 /*
 	----------------------------------------------------------------------------------------------- 
 	| Author: Samuel Miralles Manresa 
 	| Company: Inycom 
 	| Initial Version Date: 27-Nov-2024 
 	|---------------------------------------------------------------------------------------------- 
-	| Parámetro de entrada: fichero MVCAR
-    | Muestra los registros del fichero de entrada que no coinciden en cartera
+	| fichero MVCAR
+    | Muestra los registros que no coinciden en cartera
 	| 
 	| Version: 1	
 	| 
@@ -49,10 +49,10 @@ CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR(IN_FILENAME VARCHAR(250
 				, M.FECHA_FIN AS FECHA_FIN
 				, M.BATCHNAME
 			FROM EXT.EXT_MOVIMIENTO_CARTERA_CREDITO_HIST M
-			WHERE M.BATCHNAME = IN_FILENAME
+			WHERE M.BATCHNAME IN (SELECT BATCHNAME FROM EXT.REGISTRO_INTERFACES WHERE NOTIFICATION = 0 AND BATCHNAME LIKE '%MVCAR%')
 			AND NOT EXISTS(SELECT 1 FROM EXT.CARTERA WHERE RAMO = 'CREDITO' AND NUM_POLIZA = M.NUM_POLIZA AND NUM_ANUALIDAD = M.NUM_ANUALIDAD
 						AND M.IDMEDIADOR = COD_MEDIADOR AND M.FECHA_EFECTO = FECHA_EFECTO AND M.FECHA_VENCIMIENTO = FECHA_VENCIMIENTO)
 			ORDER BY NUM_POLIZA
 			;
 		
-	END;
+	END
