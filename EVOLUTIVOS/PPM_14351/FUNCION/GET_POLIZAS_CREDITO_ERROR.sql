@@ -5,7 +5,7 @@ CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR()
 	| Company: Inycom 
 	| Initial Version Date: 27-11-2024
 	| v02 Date: 11-12-2024
-	| v02 Date: 13-12-2024
+	| v03 Date: 13-12-2024
 	|---------------------------------------------------------------------------------------------- 
 	| fichero MVCAR
     | Muestra los registros que no coinciden en cartera
