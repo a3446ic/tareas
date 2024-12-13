@@ -5,12 +5,14 @@ CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR()
 	| Company: Inycom 
 	| Initial Version Date: 27-11-2024
 	| v02 Date: 11-12-2024
+	| v02 Date: 13-12-2024
 	|---------------------------------------------------------------------------------------------- 
 	| fichero MVCAR
     | Muestra los registros que no coinciden en cartera
 	| 
 	| v01: versión inicial
 	| v02: se añade el filtro para descartar los registros que el período de intermediación está fuera de la fecha de vigencia
+	| v03: se añade el filtro para descartar los registros con distinto mediador y fecha de efecto traspaso
 	| 
 	|
 	----------------------------------------------------------------------------------------------- 
@@ -60,6 +62,13 @@ CREATE OR REPLACE FUNCTION EXT.GET_POLIZAS_CREDITO_ERROR()
 							THEN 0 
             				ELSE 1 END )
 			-- fin v02
+			-- V03: FILTRO MEDIADOR DISTINTO CON FECHA_EFECTO_TRASPASO
+			AND 1 = (CASE WHEN EXISTS(SELECT 1 FROM EXT.CARTERA WHERE RAMO = 'CREDITO' AND NUM_POLIZA = M.NUM_POLIZA AND NUM_ANUALIDAD = M.NUM_ANUALIDAD 
+            							AND LPAD(M.IDMEDIADOR,4,0) ||'-'|| LPAD(M.IDSUBCLAVE,4,0) <> LPAD(COD_MEDIADOR,4,0) ||'-'|| LPAD(COD_SUBCLAVE,4,0) 
+            							AND FECHA_EFECTO_TRASPASO IS NOT NULL )
+						THEN 0
+						ELSE 1 END )
+			--FIN V03
 			ORDER BY NUM_POLIZA
 			;
 		
