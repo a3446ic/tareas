@@ -11,9 +11,10 @@ BEGIN
 	-- v12: Modificado el comportamiento cuando se reciben movimientos de tipo 2 para que contemple los casos en que una póliza es intermediada por múltiples mediadores.
 	-- v13: Cambios en movimientos tipo 2 para que tenga en cuenta múltiples mediadores en una misma póliza
 	-- v14: Si hay múltiples mediadores de traspaso se actualiza el registro con el nuevo mediador 
+	-- v14: Llamar al procedimiento EXT.GENPET_MVCARTERA 
 	-------------------------------------------------------------------------
 
-	DECLARE cVersion CONSTANT VARCHAR(2) := '14';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '15';
 	DECLARE i_Tenant VARCHAR2(127);
 	DECLARE vProcedure VARCHAR2(127);
 	DECLARE io_contador  INTEGER := 0;
@@ -809,6 +810,8 @@ BEGIN
     	COMMIT;
 
     END IF;
+
+	CALL EXT.GENPET_MVCARTERA(IN_FILENAME);
 
 	CALL LIB_GLOBAL_CESCE :w_debug (
     i_Tenant,

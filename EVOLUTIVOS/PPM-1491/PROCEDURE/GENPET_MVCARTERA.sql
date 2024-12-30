@@ -1,9 +1,14 @@
 CREATE OR REPLACE PROCEDURE "EXT"."GENPET_MVCARTERA" (IN IN_FILENAME VARCHAR(120)) LANGUAGE SQLSCRIPT AS
 BEGIN
 
+-- Versiones --------------------------------------------------------------------------------------------------------
+-- v01 - versión incial
+-- v02 - se añade join para obtener P_EMISION y P_RENOVACION
+---------------------------------------------------------------------------------------------------------------------
+
 	DECLARE io_contador Number := 0;
 	DECLARE i_Tenant VARCHAR(127);
-	DECLARE cVersion VARCHAR(2) := '01';
+	DECLARE cVersion VARCHAR(2) := '02';
     DECLARE cReportTable CONSTANT VARCHAR(50) := 'GENPET_MVCARTERA' || '_' || cVersion;
     
     
@@ -91,6 +96,7 @@ BEGIN
         MODIF_SOURCE,
         CURRENT_TIMESTAMP AS MODIF_DATE
     FROM EXT.CARTERA C
+    -- v02
     JOIN (
         SELECT 
             CT.NUM_POLIZA,
