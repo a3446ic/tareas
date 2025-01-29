@@ -45,6 +45,11 @@ if(numFianza){
 	filtros += "AND ctr.NUM_FIANZA = '$numFianza'"  
 }
 
+def numAval = form.getField('txt_aval').getValue() ?: ''
+if(numAval){
+	filtros += "AND ctr.NUM_AVAL_HOST = '$numAval'"  
+}
+
 def nifTomador = form.getField('txt_nif_tomador').getValue() ?: ''
 if(nifTomador){
 	filtros += "AND ctr.NIF_TOMADOR = '$nifTomador'"  
@@ -105,14 +110,22 @@ if(!filtros) {
 
 
   while(continuarBucle) {
-    def sql = """SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY ctr.COD_MEDIADOR) RN, ctr.RAMO, ctr.NUM_POLIZA, ctr.NUM_AVAL_HOST, ctr.IDPRODUCT, IFNULL(mom.PositionName, ctr.COD_MEDIADOR || '-' || ctr.COD_SUBCLAVE ) as PositionName, IFNULL(CONCAT_NAZ(CONCAT_NAZ(mom.NOMBRE, ' '), mom."APELLIDO/RAZON_SOCIAL"), '') as NOMBRE, CTR.P_INTERMEDIACION,
-  ctr.FECHA_INICIO, ctr.FECHA_FIN, ctr.ACTIVO, ctr.FECHA_EFECTO_TRASPASO, ctr.NOMBRE_TOMADOR, ctr.NIF_TOMADOR, 
-  ctr.PRIMA_MIN_EXT, ctr.PRIMA_MIN_INT, ctr.IDPAIS, ctr.FECHA_VENCIMIENTO, ctr.FECHA_EFECTO, 
-  ctr.FECHA_EMISION, ctr.NUM_ANUALIDAD, ctr.NUM_EXPEDIENTE, ctr.NUM_FIANZA, ctr.P_ESPECIAL_EMISION, ctr.P_ESPECIAL_RENOVACION
- FROM EXT.CARTERA ctr
-  LEFT JOIN EXT.MODIFICAR_MEDIADOR mom ON  mom.COD_MEDIADOR = ctr.COD_MEDIADOR AND mom.SUBCLAVE = ctr.COD_SUBCLAVE
-  WHERE 1=1 
-  $filtros) WHERE RN >= $limDown AND RN < $limUp"""
+    def sql = """SELECT * FROM (SELECT ROW_NUMBER() OVER(ORDER BY ctr.COD_MEDIADOR) RN, ctr.RAMO, ctr.NUM_POLIZA, ctr.NUM_AVAL_HOST, ctr.IDPRODUCT, IFNULL(mom.PositionName, ctr.COD_MEDIADOR || '-' || ctr.COD_SUBCLAVE ) as PositionName, IFNULL(CONCAT_NAZ(CONCAT_NAZ(mom.NOMBRE, ' '), mom."APELLIDO/RAZON_SOCIAL"), '') as NOMBRE, CTR.P_INTERMEDIACION
+      , CASE WHEN ctr.FECHA_INICIO = '1990-12-31' THEN '' ELSE FECHA_INICIO END FECHA_INICIO 
+      , CASE WHEN ctr.FECHA_FIN = '2200-01-01' THEN '' END FECHA_FIN
+      , CASE WHEN ctr.ACTIVO = 0 THEN 'DESHABILITADO' 
+        WHEN ctr.ACTIVO = 1 THEN 'ACTIVO'
+        WHEN ctr.ACTIVO = 2 THEN 'ESPERA DE RENOVACIÓN'
+        END ACTIVO
+      , ctr.FECHA_EFECTO_TRASPASO, ctr.NOMBRE_TOMADOR, ctr.NIF_TOMADOR, 
+      ctr.PRIMA_MIN_EXT, ctr.PRIMA_MIN_INT, ctr.IDPAIS, ctr.FECHA_VENCIMIENTO, ctr.FECHA_EFECTO, 
+      ctr.FECHA_EMISION, ctr.NUM_ANUALIDAD, ctr.NUM_EXPEDIENTE, ctr.NUM_FIANZA, ctr.P_ESPECIAL_EMISION, ctr.P_ESPECIAL_RENOVACION,
+      ctr.FECHA_INICIO_OPESP, ctr.FECHA_FIN_OPESP
+    FROM EXT.CARTERA ctr
+    LEFT JOIN EXT.MODIFICAR_MEDIADOR mom ON  mom.COD_MEDIADOR = ctr.COD_MEDIADOR AND mom.SUBCLAVE = ctr.COD_SUBCLAVE
+    WHERE 1=1 
+    $filtros) WHERE RN >= $limDown AND RN < $limUp
+    ORDER BY RAMO DESC,NUM_POLIZA,PositionName,NUM_FIANZA,ACTIVO,NUM_ANUALIDAD,FECHA_INICIO"""
 
     def resultsBucle = db.queryForList(sql)
     
@@ -180,6 +193,10 @@ if(!filtros) {
       elementMap.put("P_ESPECIAL_EMISION", it.P_ESPECIAL_EMISION);
       
       elementMap.put("P_ESPECIAL_RENOVACION", it.P_ESPECIAL_RENOVACION);
+      
+      elementMap.put("FECHA_INICIO_OPESP", it.FECHA_INICIO_OPESP);
+      
+      elementMap.put("FECHA_FIN_OPESP", it.FECHA_FIN_OPESP);
       
       list.add(elementMap);
     }

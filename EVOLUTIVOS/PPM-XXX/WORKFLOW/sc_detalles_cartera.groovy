@@ -24,6 +24,9 @@ out << selected
   def fechaEfectoTraspaso = selected['FECHA_EFECTO_TRASPASO'][0]
   def porcentajeEspecialEmision = selected['P_ESPECIAL_EMISION'][0];
   def porcentajeEspecialRenovacion = selected['P_ESPECIAL_RENOVACION'][0];
+  def fechaInicioOperacionesEspeciales = selected['FECHA_INICIO_OPESP'][0];
+  def fechaFinOperacionesEspeciales = selected['FECHA_FIN_OPESP'][0];
+  
   
   def descripcion = """Ramo: $ramo
   Id Producto: $idproduct
@@ -43,6 +46,8 @@ out << selected
   Fecha Efecto Traspaso: $fechaEfectoTraspaso
   Porcentaje Especial de Emisión: $porcentajeEspecialEmision
   Porcentaje Especial de Renovación: $porcentajeEspecialRenovacion
+  Fecha Inicio Operaciones Especiales: $fechaInicioOperacionesEspeciales
+  Fecha Fin Operaciones Especiales: $fechaFinOperacionesEspeciales
   """
 
   txtDescripcion.setValue(descripcion)
