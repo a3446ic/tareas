@@ -27,12 +27,12 @@ BEGIN
     DECLARE v_modifSource NVARCHAR(250);
     DECLARE v_tipoTraspaso NVARCHAR(10);
     DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
+    DECLARE cTipoMovimiento NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(150) := 'sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CAUCION';
-    DECLARE cTipoMovimiento NVARCHAR(50) := 'MEDIADOR > MEDIADOR';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN';
     
 	-- DECLARACION DE CURSOR    
@@ -112,6 +112,7 @@ BEGIN
     SELECT JSON_VALUE(:p_json, '$.caseId') INTO v_caseId FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.tipoTraspaso') INTO v_tipoTraspaso FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.fechaTraspaso') INTO v_fechaTraspaso FROM DUMMY;
+	SELECT JSON_VALUE(:p_json, '$.tipoMovimiento') INTO cTipoMovimiento FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.tipoTraspasoCaucion') INTO v_tipoTraspasoCaucion FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.codigoMediadorCedente') INTO v_codMediadorCedente FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.subClaveMediadorCedente') INTO v_subClaveMediadorCedente FROM DUMMY;
@@ -163,7 +164,7 @@ BEGIN
     )
     SELECT 
         C.IDCASE,
-        cTipoMovimiento,
+        UPPER(cTipoMovimiento),
         UPPER(v_tipoTraspaso),
         cRamo,
         UPPER(v_tipoTraspasoCaucion),
@@ -221,6 +222,8 @@ BEGIN
         ON R.receptorIndex = PR.receptorIndex  
         -- AND P.NUM_POLIZA_CEDENTE = PR.NUM_POLIZA_RECEPTOR
     ;
+
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. TABLA TRASPASOS_TEMP', cReport, io_contador);
     
     IF v_tipoTraspaso = 'total' THEN
 		v_modifSource:= 'TRASPASO TOTAL CAUCIÓN ' || v_caseId;
@@ -297,11 +300,12 @@ BEGIN
 	  --  )
 	    ORDER BY NUM_POLIZA,NUM_ANUALIDAD;
 	    
-	    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS PARA LA PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' PARA MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
+	    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' - MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
 	    
 	    END FOR;
 		CLOSE CURSOR_RECEPTOR;
-	    --ACTUALIZAMOS MEDIADOR CEDENTE
+	    
+		--ACTUALIZAMOS MEDIADOR CEDENTE
 	    UPDATE EXT.CARTERA
 	    SET FECHA_FIN = (CASE WHEN NUM_FIANZA IS NULL THEN ADD_DAYS(v_fechaTraspaso,-1) ELSE FECHA_FIN END),
 	    MODIF_USER = 'SMM',
@@ -396,7 +400,7 @@ BEGIN
 		  --  )
 		    ORDER BY NUM_POLIZA,NUM_ANUALIDAD;
 		    
-		    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS PARA LA PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' PARA MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
+		    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' - MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
 		END FOR;
 		CLOSE CURSOR_RECEPTOR;
 		
@@ -422,7 +426,7 @@ BEGIN
 	
 	END IF;
 	
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO ' || cVersion || ' with SESSION_USER '|| SESSION_USER, cReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 
  --   -- Extraer valores de JSON
  --   DECLARE v_codMediadorCedente NVARCHAR(100);

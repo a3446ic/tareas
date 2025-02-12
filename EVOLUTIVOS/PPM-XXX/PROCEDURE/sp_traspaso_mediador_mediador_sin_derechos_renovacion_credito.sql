@@ -26,12 +26,13 @@ BEGIN
     DECLARE v_caseId BIGINT;
     DECLARE v_modifSource NVARCHAR(250);
     DECLARE v_tipoTraspaso NVARCHAR(10);
+    DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
+	DECLARE cTipoMovimiento NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(250) := 'sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
-	DECLARE cTipoMovimiento NVARCHAR(50) := 'MEDIADOR > MEDIADOR';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN ';
     
     -- DECLARACION DE CURSOR    
@@ -108,6 +109,7 @@ BEGIN
     SELECT JSON_VALUE(:p_json, '$.caseId') INTO v_caseId FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.tipoTraspaso') INTO v_tipoTraspaso FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.fechaTraspaso') INTO v_fechaTraspaso FROM DUMMY;
+    SELECT JSON_VALUE(:p_json, '$.tipoMovimiento') INTO cTipoMovimiento FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.codigoMediadorCedente') INTO v_codMediadorCedente FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.subClaveMediadorCedente') INTO v_subClaveMediadorCedente FROM DUMMY;
     
@@ -158,7 +160,7 @@ BEGIN
     )
     SELECT 
         C.IDCASE,
-        cTipoMovimiento,
+        UPPER(cTipoMovimiento),
         UPPER(v_tipoTraspaso),
         cRamo,
         UPPER(v_tipoTraspasoCaucion),
@@ -216,6 +218,7 @@ BEGIN
         ON R.receptorIndex = PR.receptorIndex  
         -- AND P.NUM_POLIZA_CEDENTE = PR.NUM_POLIZA_RECEPTOR
     ;
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. TABLA TRASPASOS_TEMP', cReport, io_contador);
 
 	IF v_tipoTraspaso = 'total' THEN
 		v_modifSource:= 'TRASPASO TOTAL MEDIADOR MEDIADOR SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN ' || v_caseId;
@@ -292,7 +295,7 @@ BEGIN
 	WHERE RN = 1
 	ORDER BY NUM_POLIZA, NUM_ANUALIDAD;
 	
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS PARA LA PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' PARA MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' - MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
 	
   END FOR; 
   CLOSE CURSOR_RECEPTOR;

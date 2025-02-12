@@ -26,10 +26,14 @@ BEGIN
     DECLARE v_caseId BIGINT;
     DECLARE v_modifSource NVARCHAR(250);
     DECLARE v_tipoTraspaso NVARCHAR(10);
+    DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
+	DECLARE cTipoMovimiento NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_mediador_mediador_con_derechos_credito';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
+    DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
+    DECLARE cDerechosObligaciones NVARCHAR(50) := 'CON DERECHOS Y OBLIGACIONES';
     
     -- DECLARACION DE CURSOR    
     DECLARE CURSOR CURSOR_RECEPTOR FOR
@@ -105,6 +109,7 @@ BEGIN
     SELECT JSON_VALUE(:p_json, '$.caseId') INTO v_caseId FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.tipoTraspaso') INTO v_tipoTraspaso FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.fechaTraspaso') INTO v_fechaTraspaso FROM DUMMY;
+    SELECT JSON_VALUE(:p_json, '$.tipoMovimiento') INTO cTipoMovimiento FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.codigoMediadorCedente') INTO v_codMediadorCedente FROM DUMMY;
     SELECT JSON_VALUE(:p_json, '$.subClaveMediadorCedente') INTO v_subClaveMediadorCedente FROM DUMMY;
     
@@ -146,9 +151,7 @@ BEGIN
     	DELETE FROM EXT.TRASPASOS_TEMP WHERE IDCASE = v_caseId;
     END IF;
 
-    -- ELIMINAR REGISTROS PREVIOS DE LA TABLA TEMPORAL
-    DELETE FROM EXT.TRASPASOS_TEMP WHERE IDCASE = v_caseId;
-
+    
     -- INSERTAR DATOS EN LA TABLA TEMPORAL DESDE EL JSON
     INSERT INTO EXT.TRASPASOS_TEMP(IDCASE,TIPO_MOVIMIENTO,TIPO_TRASPASO,RAMO,TIPO_TRASPASO_CAUCION,DERECHOS_OBLIGACIONES,
     	CODIGOMEDIADORCEDENTE,SUBCLAVEMEDIADORCEDENTE,FECHATRASPASO,NUM_POLIZA_CEDENTE,NUM_AVAL_CEDENTE,PORCENTAJE_INTERMEDIACION_CEDENTE,
@@ -158,7 +161,7 @@ BEGIN
     )
     SELECT 
         C.IDCASE,
-        cTipoMovimiento,
+        UPPER(cTipoMovimiento),
         UPPER(v_tipoTraspaso),
         cRamo,
         UPPER(v_tipoTraspasoCaucion),
@@ -217,14 +220,9 @@ BEGIN
         -- AND P.NUM_POLIZA_CEDENTE = PR.NUM_POLIZA_RECEPTOR
     ;
 
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. TABLA TRASPASOS_TEMP', cReport, io_contador);
    
-    -- COMPROBAR SI ES TRASPASO TOTAL O PARCIAL
-	-- IF NOT EXISTS(SELECT 1 FROM JSON_TABLE(:p_json, '$.polizas[*]' 
- --       COLUMNS (
- --           num_poliza NVARCHAR(20) PATH '$.num_poliza',
- --           porcentaje_intermediacion NVARCHAR(10) PATH '$.porcentaje_intermediacion'
- --       )
- --   )) THEN
+    -- COMPROBAR SI ES TRASPASO TOTAL O PARCIAL	
 	IF v_tipoTraspaso = 'total' THEN
 		v_modifSource:= 'TRASPASO TOTAL MEDIADOR MEDIADOR CON DERECHOS Y OBLIGACIONES ' || v_caseId;
 	ELSE
@@ -292,7 +290,7 @@ BEGIN
         
         ORDER BY NUM_POLIZA,NUM_ANUALIDAD;
         
-        CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS PARA LA PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' PARA MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
+        CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || ::ROWCOUNT || ' REGISTROS. PÓLIZA ' || CR.NUM_POLIZA_CEDENTE || ' - MEDIADOR RECEPTOR ' || CR.CODIGOMEDIADORRECEPTOR||'-'||CR.SUBCLAVEMEDIADORRECEPTOR, cReport, io_contador);
 	END FOR;
     CLOSE CURSOR_RECEPTOR;
     

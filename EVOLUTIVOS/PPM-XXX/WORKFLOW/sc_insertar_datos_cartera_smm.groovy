@@ -113,7 +113,7 @@ def executeQuery(query) {
 }
 
 //MONTAR JSON
-def createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion) {
+def createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento) {
     
     return """{
             "codigoMediadorCedente":"$codigoMediadorCedente",
@@ -123,6 +123,7 @@ def createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, json
             "polizas":$jsonPolizas,
             "receptor":$jsonReceptores,
             "fechaTraspaso":"$dateEfecto",
+            "tipoMovimiento":"$tipoMovimiento",
             "caseId":"$idCasoOrigen" 
     }""";
 
@@ -265,7 +266,7 @@ switch(tipoMovimiento) {
         logger.info('SIN-MEDIADOR');
         codigoMediadorCedente = '0000';
         subclaveMediadorCedente = '0000';
-        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion);
+        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento);
         logger.info('json: '+ json);
         switch(ramo) {
             case 'credito':
@@ -282,7 +283,7 @@ switch(tipoMovimiento) {
 
     case 'mediador_mediador':
         logger.info('MEDIADOR-MEDIADOR');   
-        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion);
+        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento);
         logger.info('json: '+ json);
         switch(ramo) {
             case 'credito':
@@ -318,7 +319,7 @@ switch(tipoMovimiento) {
     case 'MEDIADOR-CANAL-DIRECTO':
         codigoMediadorReceptor = '0000';
         subClaveMediadorReceptor = '0000';
-        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion);
+        json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento);
         logger.info('json: '+ json);
         switch(ramo) {
             case 'credito':
