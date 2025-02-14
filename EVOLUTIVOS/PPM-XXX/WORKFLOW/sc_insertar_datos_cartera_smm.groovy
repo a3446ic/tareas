@@ -14,12 +14,17 @@ def ramo = currentCase.getCustomFieldValue('pl_ramo');
 def dateEfecto = currentCase.getCustomFieldValue('date_efecto').toString();
 def tipoTraspasoCaucion = currentCase.getCustomFieldValue('pl_traspasos_caucion');
 
+
 // Mediador cedente
 def autoCedente;
 autoCedente = currentCase.getCustomFieldValue('auto_mediador');
-def codigoCedenteCompleto = autoCedente ? autoCedente.split(' ')?.getAt(0) : '0000-0000';
+
+//def codigoCedenteCompleto = autoCedente ? autoCedente.split(' ')?.getAt(0) : '0000-0000';
+def codigoCedenteCompleto = autoCedente != 'Sin Mediador' ? autoCedente : '0000-0000';
+
 def codigoMediadorCedente = codigoCedenteCompleto?.split('-')?.getAt(0);
 def subclaveMediadorCedente = codigoCedenteCompleto?.split('-')?.getAt(1);
+
 // Mediador receptor
 def codigoMediadorReceptor;
 def subClaveMediadorReceptor;
@@ -65,8 +70,8 @@ def polizas = mapaPolizas.collect { poliza ->
 //def numPolizas = polizas.collect { it.num_poliza }
 def jsonPolizas = JsonOutput.toJson(polizas);
 // Mapa de avales
-def numAval = polizas.collect { it.codigo_aval }
-def jsonAval = JsonOutput.toJson(numAval);
+//def numAval = polizas.collect { it.codigo_aval }
+//def jsonAval = JsonOutput.toJson(numAval);
 
 //JSON
 def json;
@@ -84,13 +89,13 @@ logger.info('Código Mediador Cedente: ' + codigoCedenteCompleto);
 logger.info('codigoMediadorCedente: ' + codigoMediadorCedente);
 logger.info('subclaveMediadorCedente: ' + subclaveMediadorCedente);
 logger.info('tipoTraspasoCaucion: ' + tipoTraspasoCaucion);
- logger.info('receptores: ' + receptores);
- logger.info('receptores size ' + receptores.size());
+logger.info('receptores: ' + receptores);
+logger.info('receptores size ' + receptores.size());
 logger.info('polizas: ' + polizas);
 logger.info('polizas size ' + polizas.size());
 logger.info('jsonPolizas: ' + jsonPolizas);
-logger.info('jsonAval: ' + jsonAval);
- logger.info('jsonReceptores: ' + jsonReceptores);
+//logger.info('jsonAval: ' + jsonAval);
+logger.info('jsonReceptores: ' + jsonReceptores);
 
 
 
@@ -245,7 +250,7 @@ def traspasoPorcentajeAmbos(derechosObligaciones, json) {
             logger.info('CON DERECHOS Y OBLIGACIONES - CAUCION');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_con_derechos_caucion('$json')""");
             break;
-        case 'traspaso_sin_derechos_y_obligaciones':
+        case 'sin_derechos_y_obligaciones_a_la_renovacin':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito('$json')""");
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
@@ -316,7 +321,8 @@ switch(tipoMovimiento) {
         // }
         break;
 
-    case 'MEDIADOR-CANAL-DIRECTO':
+    case 'mediador_canal_directo':
+        logger.info('MEDIADOR > CANAL-DIRECTO');
         codigoMediadorReceptor = '0000';
         subClaveMediadorReceptor = '0000';
         json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento);

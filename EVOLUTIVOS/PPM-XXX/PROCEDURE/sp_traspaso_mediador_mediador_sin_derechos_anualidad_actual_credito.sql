@@ -398,26 +398,4 @@ BEGIN
 	
     CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO ' || cVersion || ' with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 
-END;
-
-
-DO BEGIN 
---DECLARE JSON VARCHAR(5000) = '{"codigoMediadorCedente":"0004", "subClaveMediadorCedente":"0000","polizas":[{"num_poliza":"22751","porcentaje_emision":"100"}],"receptor":[{"codigoMediadorReceptor":"1347","subClaveMediadorReceptor":"0000","polizasReceptor":[{"num_poliza":"22751","porcentaje_emision":"50"}]},{"codigoMediadorReceptor":"2244","subClaveMediadorReceptor":"0000","polizasReceptor":[{"num_poliza":"22751","porcentaje_emision":"50"}]}],"fechaTraspaso":"2025-02-11","idCase":"1751"}';
---DECLARE JSON VARCHAR(5000) = '{ "codigoMediadorCedente":"0004", "subClaveMediadorCedente":"0000", "polizas":"[{"num_poliza":"22751","porcentaje_intermediacion":"100.000"},{"num_poliza":"9008150","porcentaje_intermediacion":"100.000"},{"num_poliza":"9052663","porcentaje_intermediacion":"100.000"},{"num_poliza":"9053785","porcentaje_intermediacion":"100.000"}]", "receptor":"[{"codigo_mediador":"3071","subclave_mediador":"0000","polizas":[]}]", "fechaTraspaso":"2025-02-12", "caseId":"1779" }';
-DECLARE JSON VARCHAR(5000) = '{ "codigoMediadorCedente":"0004", "subClaveMediadorCedente":"0000", "polizas":[{"num_poliza":"22751","porcentaje_intermediacion":"100.000"},{"num_poliza":"9008150","porcentaje_intermediacion":"100.000"},{"num_poliza":"9052663","porcentaje_intermediacion":"100.000"},{"num_poliza":"9053785","porcentaje_intermediacion":"100.000"}],"fechaTraspaso":"2025-02-12","caseId":"1779" }';
-
-TRUNCATE TABLE EXT.CARTERA;
-INSERT INTO EXT.CARTERA SELECT * FROM EXT.CARTERA_BKP_04022025 ;
-
-DELETE FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito%';
-
-SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_ANUALIDAD,COD_MEDIADOR,COD_SUBCLAVE,FECHA_EFECTO,FECHA_VENCIMIENTO,FECHA_INICIO,FECHA_FIN FROM EXT.CARTERA WHERE COD_MEDIADOR = '0004' AND RAMO = 'CREDITO' ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_ANUALIDAD;
-
-	
---CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito('{ "codigoMediadorCedente":"0004", "subClaveMediadorCedente":"0000", "tipoTraspaso":"total", "polizas":[{"num_poliza":"22751","porcentaje_intermediacion":"100.000"},{"num_poliza":"9008150","porcentaje_intermediacion":"100.000"},{"num_poliza":"9052663","porcentaje_intermediacion":"100.000"},{"num_poliza":"9053785","porcentaje_intermediacion":"100.000"}], "receptor":[{"codigoMediadorReceptor":"3071","subClaveMediadorReceptor":"0000","porcentajeTraspaso":"50","polizasReceptor":[]},{"codigoMediadorReceptor":"2517","subClaveMediadorReceptor":"0000","porcentajeTraspaso":"50","polizasReceptor":[]}], "fechaTraspaso":"2025-02-12", "caseId":"1781" }');
-CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito('{ "codigoMediadorCedente":"0004", "subClaveMediadorCedente":"0000", "tipoTraspaso":"parcial", "polizas":[{"num_poliza":"22751","porcentaje_intermediacion":"100"},{"num_poliza":"9053785","porcentaje_intermediacion":"100"}], "receptor":[{"codigoMediadorReceptor":"4549","subClaveMediadorReceptor":"0000","porcentajeTraspaso":"100","polizasReceptor":[{"num_poliza":"22751","porcentaje_intermediacion":"50"},{"num_poliza":"9053785","porcentaje_intermediacion":"50"}]},{"codigoMediadorReceptor":"3073","subClaveMediadorReceptor":"0000","porcentajeTraspaso":"100","polizasReceptor":[{"num_poliza":"22751","porcentaje_intermediacion":"50"},{"num_poliza":"9053785","porcentaje_intermediacion":"50"}]}], "fechaTraspaso":"2025-02-13", "caseId":"1788" }');
-
-SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_ANUALIDAD,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_EFECTO,FECHA_VENCIMIENTO,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE FROM EXT.CARTERA WHERE (COD_MEDIADOR = '0004' OR MODIF_USER = 'SMM') AND RAMO = 'CREDITO' ORDER BY ACTIVO,COD_MEDIADOR,NUM_ANUALIDAD,NUM_POLIZA;
-SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito%';
-
-END;
+END
