@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion (IN caseId BIGINT)
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion_caseid (IN caseId BIGINT)
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -69,9 +69,9 @@ BEGIN
     
     -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
 	IF v_tipoTraspaso = 'TOTAL' THEN
-		v_modifSource:= 'TRASPASO TOTAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
+		v_modifSource:= 'TRASPASO TOTAL MEDIADOR MEDIADOR CON DERECHOS Y OBLIGACIONES ' || :caseId;
 	ELSE
-		v_modifSource:= 'TRASPASO PARCIAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
+		v_modifSource:= 'TRASPASO PARCIAL MEDIADOR MEDIADOR CON DERECHOS Y OBLIGACIONES ' || :caseId;
 	END IF;
 	
 	IF EXISTS(SELECT 1 FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND COD_AVAL IS NULL) 
@@ -87,7 +87,7 @@ BEGIN
 	IF v_tipoTraspasoCaucion = 'expediente' THEN
 		
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
-	v_modifSource:= 'EXPEDIENTE MEDIADOR MEDIADOR '|| cDerechosObligaciones || ' ' || :caseId;
+	v_modifSource:= 'EXPEDIENTE MEDIADOR MEDIADOR SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN' || :caseId;
 	
 
 		
@@ -171,7 +171,7 @@ BEGIN
 	ELSE
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 		
-		v_modifSource:= v_modifSource || 'AVAL MEDIADOR MEDIADOR '|| cDerechosObligaciones || ' ' || :caseId;
+		v_modifSource:= v_modifSource || 'AVAL MEDIADOR MEDIADOR SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN' || v_caseId;
 		-- ABRIR CURSOR
 	    OPEN CURSOR_TRASPASOS;
 	
@@ -249,7 +249,153 @@ BEGIN
 	
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 
- 
+ --   -- Extraer valores de JSON
+ --   DECLARE v_codMediadorCedente NVARCHAR(100);
+ --   DECLARE v_subClaveMediadorCedente NVARCHAR(100);
+ --   DECLARE v_codMediadorReceptor NVARCHAR(100);
+ --   DECLARE v_subClaveMediadorReceptor NVARCHAR(100);
+ --   DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
+ --   DECLARE v_fechaTraspaso DATE;
+ --   DECLARE v_caseId BIGINT;
+ --   DECLARE v_modifSource NVARCHAR(250);
+ --   DECLARE cRamo VARCHAR(10) := 'CAUCION';
+    
+
+ --   SELECT JSON_VALUE(:p_json, '$.codigoMediadorCedente') INTO v_codMediadorCedente FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.subClaveMediadorCedente') INTO v_subClaveMediadorCedente FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.codigoMediadorReceptor') INTO v_codMediadorReceptor FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.subClaveMediadorReceptor') INTO v_subClaveMediadorReceptor FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.tipoTraspasoCaucion') INTO v_tipoTraspasoCaucion FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.fechaTraspaso') INTO v_fechaTraspaso FROM DUMMY;
+ --   SELECT JSON_VALUE(:p_json, '$.caseId') INTO v_caseId FROM DUMMY;
+
+	-- ----!!!!! PRUEBAS TEST BORRAR !!!!! --------
+ --   TRUNCATE TABLE EXT.CARTERA;
+ --	INSERT INTO EXT.CARTERA SELECT * FROM EXT.CARTERA_BKP_04022025 ;
+ --	----!!!!! PRUEBAS TEST BORRAR !!!!! --------
+
+ --   --TABLA TEMPORAL PARA NUM_POLIZAS
+ --   CREATE LOCAL TEMPORARY TABLE #TEMPNUMPOLIZAS (NUM_POLIZA NVARCHAR(50));
+ --   INSERT INTO #TEMPNUMPOLIZAS SELECT NUM_POLIZA FROM JSON_TABLE(:p_json, '$.numPolizas[*]' COLUMNS (NUM_POLIZA NVARCHAR(2500) PATH '$'));
+	
+	-- --TABLA TEMPORAL PARA COD_AVAL
+ --   CREATE LOCAL TEMPORARY TABLE #TEMPCODAVAL (COD_AVAL NVARCHAR(50));
+ --   INSERT INTO #TEMPCODAVAL SELECT COD_AVAL FROM JSON_TABLE(:p_json, '$.codAval[*]' COLUMNS (COD_AVAL NVARCHAR(2500) PATH '$'));
+    
+   
+ --   -- COMPROBAR SI ES TRASPASO TOTAL O PARCIAL
+	-- IF NOT EXISTS(SELECT 1 FROM #TEMPNUMPOLIZAS) THEN
+	-- 	v_modifSource:= 'TRASPASO CAUCIÓN ';
+	-- ELSE
+	-- 	v_modifSource:= 'TRASPASO CAUCIÓN ';
+	-- END IF;
+
+	-- IF v_tipoTraspasoCaucion = 'expediente' THEN
+
+	-- 	v_modifSource:= v_modifSource || 'EXPEDIENTE TOTAL MEDIADOR MEDIADOR CON DERECHOS Y OBLIGACIONES ' || v_caseId;
+	    
+	-- 	-- INSERTAMOS EXPEDIENTE MEDIADOR RECEPTOR
+	--     INSERT INTO EXT.CARTERA 
+	--     SELECT 
+	-- 	"RAMO",
+	-- 	"IDPRODUCT",
+	-- 	"NUM_POLIZA",
+	-- 	"IDMODALIDAD",
+	-- 	"IDSUBMODALIDAD",
+	-- 	"NUM_FIANZA",
+	-- 	"NUM_EXPEDIENTE",
+	-- 	"NUM_AVAL_HOST",
+	-- 	"NUM_ANUALIDAD",
+	-- 	"FECHA_EMISION",
+	-- 	"FECHA_EFECTO",
+	-- 	"FECHA_VENCIMIENTO",
+	-- 	"IDPAIS",
+	-- 	"PRIMA_PROVISIONAL_INT",
+	-- 	"PRIMA_PROVISIONAL_EXT",
+	-- 	"IDDIVISA_INT",
+	-- 	"IDDIVISA_EXT",
+	-- 	"IDDIVISA_COBERTURA",
+	-- 	"PRIMA_MIN_INT",
+	-- 	"PRIMA_MIN_EXT",
+	-- 	:v_codMediadorReceptor, --COD_MEDIADOR
+	-- 	v_subClaveMediadorReceptor, --COD_SUBCLAVE
+	-- 	"P_INTERMEDIACION",
+	-- 	v_fechaTraspaso, --FECHA_INICIO
+	-- 	'2200-01-01', --FECHA_FIN
+	-- 	"P_ESPECIAL_EMISION",
+	-- 	"P_ESPECIAL_RENOVACION",
+	-- 	"NIF_TOMADOR",
+	-- 	"NOMBRE_TOMADOR",
+	-- 	"FECHA_EFECTO_TRASPASO",
+	-- 	"MEDIADOR_PRINCIPAL_CIC",
+	-- 	"ACTIVO",
+	-- 	CURRENT_TIMESTAMP, --CREATION_DATE
+	-- 	CURRENT_TIMESTAMP, --MODIF_DATE
+	-- 	'SMM', --MODIF_USER
+	-- 	v_modifSource, --MODIF_SOURCE
+	-- 	NULL, --FECHA_INICIO_OPESP
+	-- 	NULL --FECHA_FIN_OPESP
+	-- 	FROM EXT.CARTERA
+	--     WHERE COD_MEDIADOR = :v_codMediadorCedente
+	--     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
+	--     AND RAMO = cRamo
+	--     AND ACTIVO = 1
+	-- 	AND NUM_FIANZA IS NULL
+	--     AND (
+	-- 		-- SI EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN ESAS PÓLIZAS
+	--     	EXISTS (SELECT 1 FROM #TEMPNUMPOLIZAS) 
+	--     			AND NUM_POLIZA IN (SELECT NUM_POLIZA FROM #TEMPNUMPOLIZAS)
+	--     	-- SI NO EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN TODAS LAS PÓLIZAS
+	--     	OR NOT EXISTS (SELECT 1 FROM #TEMPNUMPOLIZAS)
+	--     )
+	--     ORDER BY NUM_POLIZA,NUM_ANUALIDAD;
+	    
+	--  --   --ACTUALIZAMOS MEDIADOR CEDENTE
+	--     UPDATE EXT.CARTERA
+ --       SET
+	--     FECHA_FIN = ADD_DAYS(v_fechaTraspaso,-1),
+	--     MODIF_USER = 'SMM',
+	--     MODIF_SOURCE = v_modifSource,
+	--     MODIF_DATE = CURRENT_TIMESTAMP
+	--     WHERE COD_MEDIADOR = :v_codMediadorCedente
+	--     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
+	--     AND RAMO = cRamo
+	--     AND ACTIVO = 1
+	--     AND NUM_FIANZA IS NULL
+	--     AND (
+	--     	-- SI EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN ESAS PÓLIZAS
+	--     	EXISTS (SELECT 1 FROM #TEMPNUMPOLIZAS) 
+	--     			AND NUM_POLIZA IN (SELECT NUM_POLIZA FROM #TEMPNUMPOLIZAS)
+	--     	-- SI NO EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN TODAS LAS PÓLIZAS
+	--     	OR NOT EXISTS (SELECT 1 FROM #TEMPNUMPOLIZAS)
+	--     );
+	-- ELSE
+	
+	-- 	v_modifSource:= v_modifSource || 'AVAL INDIVIDUAL TOTAL MEDIADOR MEDIADOR CON DERECHOS Y OBLIGACIONES ' || v_caseId;
+		
+	-- 	--ACTUALIZAMOS AVAL MEDIADOR RECEPTOR
+	--     UPDATE EXT.CARTERA
+	--     SET COD_MEDIADOR = v_codMediadorReceptor,
+	--     COD_SUBCLAVE = v_subClaveMediadorReceptor,
+	--     MODIF_USER = 'SMM',
+	--     MODIF_SOURCE = v_modifSource,
+	--     MODIF_DATE = CURRENT_TIMESTAMP
+	--     WHERE COD_MEDIADOR = :v_codMediadorCedente
+	--     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
+	--     AND RAMO = cRamo
+	--     AND ACTIVO = 1
+	--     AND (
+	--     	-- SI EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN ESAS PÓLIZAS
+	--     	EXISTS (SELECT 1 FROM #TEMPCODAVAL) 
+	--     			AND NUM_AVAL_HOST IN (SELECT COD_AVAL FROM #TEMPCODAVAL)
+	--     	-- SI NO EXISTEN VALORES EN NUM_POLIZAS SE TRASPASAN TODAS LAS PÓLIZAS
+	--     	OR NOT EXISTS (SELECT 1 FROM #TEMPCODAVAL)
+	--     );
+	-- END IF;
+    
+ --   --BORRAMOS TABLA TEMPORAL
+ --   DROP TABLE #TEMPNUMPOLIZAS;
+ --   DROP TABLE #TEMPCODAVAL;
 END;
 
 DO BEGIN 
@@ -266,14 +412,14 @@ DELETE FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_sin
 SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,FECHA_INICIO,FECHA_FIN FROM EXT.CARTERA WHERE COD_MEDIADOR = '0004' AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_AVAL_HOST;
 
 	
-CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion(vCASEID);
- 
+CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion_caseid(vCASEID);
+
 SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE,MODIF_USER 
 FROM EXT.CARTERA 
 WHERE (COD_MEDIADOR IN('0004') OR MODIF_USER = 'SMM') AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_AVAL_HOST,NUM_POLIZA;
 
 
 SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion%';
-
+SELECT * FROM EXT.SOLICITUD_TRASPASO WHERE CASEID IN (vCASEID);
 
 END;
