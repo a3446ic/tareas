@@ -148,11 +148,11 @@ def traspasoCredito(derechosObligaciones, idCasoOrigen) {
             break;
         case 'traspaso_sin_derechos_y_obligaciones':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
-            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito('$idCasoOrigen')""");
+            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito($idCasoOrigen)""");
             break;
         case 'sin_derechos_y_obligaciones_al_inicio_de_la_anuali':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA ANUALIDAD ACTUAL - CREDITO');
-            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito('$idCasoOrigen')""");
+            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito($idCasoOrigen)""");
             break;
     }
 }
@@ -311,6 +311,22 @@ switch(tipoMovimiento) {
         subClaveMediadorReceptor = '0000';
         // json = createJson(codigoMediadorCedente, subclaveMediadorCedente, jsonPolizas, jsonReceptores, dateEfecto, idCasoOrigen, tipoTraspaso, tipoTraspasoCaucion, tipoMovimiento);
         // logger.info('json: '+ json);
+        switch(ramo) {
+            case 'credito':
+                traspasoCredito(derechosObligaciones, idCasoOrigen);
+                break;
+            case 'caucion':
+                traspasoCaucion(derechosObligaciones, idCasoOrigen);
+                break;
+            case 'ambos':
+                traspasoAmbos(derechosObligaciones, idCasoOrigen);
+                break;
+        }
+        break;
+
+    case 'error_captura':
+        logger.info('ERROR-CAPTURA');   
+        
         switch(ramo) {
             case 'credito':
                 traspasoCredito(derechosObligaciones, idCasoOrigen);

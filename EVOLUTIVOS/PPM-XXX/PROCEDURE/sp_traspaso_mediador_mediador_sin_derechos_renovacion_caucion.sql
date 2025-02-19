@@ -27,7 +27,8 @@ BEGIN
     DECLARE v_modifSource NVARCHAR(1000);
     DECLARE v_tipoTraspaso NVARCHAR(10);
     DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
-    DECLARE cTipoMovimiento NVARCHAR(50);
+    DECLARE v_TipoMovimiento INT;
+	DECLARE v_DescTipoMovimiento NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(150) := 'sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
@@ -55,7 +56,6 @@ BEGIN
     --Inicio
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INICIO PROCEDIMIENTO v' || cVersion || ' with SESSION_USER '|| SESSION_USER, CReport, io_contador);
 	
-	SELECT * FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
 	
 	--OBTENER VALORES
 	SELECT DISTINCT 
@@ -66,13 +66,23 @@ BEGIN
 		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso 
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
 	
+	-- TIPO MOVIMIENTO
+    SELECT CASE 
+    	WHEN v_TipoMovimiento = 1 THEN 'SIN MEDIADOR > MEDIADOR'
+    	WHEN v_TipoMovimiento = 2 THEN 'MEDIADOR > MEDIADOR'
+    	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
+    	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
+    	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
+    	END
+    INTO v_DescTipoMovimiento
+    FROM DUMMY;
     
     -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
-	IF v_tipoTraspaso = 'TOTAL' THEN
-		v_modifSource:= 'TRASPASO TOTAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
-	ELSE
-		v_modifSource:= 'TRASPASO PARCIAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
-	END IF;
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
+    	v_tipoTraspaso:= 'TOTAL';
+    ELSE
+    	v_tipoTraspaso:= 'PARCIAL';
+    END IF;
 	
 	IF EXISTS(SELECT 1 FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND COD_AVAL IS NULL) 
 		AND NOT EXISTS(SELECT 1 FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND COD_AVAL IS NOT NULL) THEN
@@ -86,7 +96,8 @@ BEGIN
 	
 	IF v_tipoTraspasoCaucion = 'expediente' THEN
 		
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||:v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+
 	v_modifSource:= 'EXPEDIENTE MEDIADOR MEDIADOR '|| cDerechosObligaciones || ' ' || :caseId;
 	
 
@@ -169,7 +180,7 @@ BEGIN
 		
 		
 	ELSE
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||:v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 		
 		v_modifSource:= v_modifSource || 'AVAL MEDIADOR MEDIADOR '|| cDerechosObligaciones || ' ' || :caseId;
 		-- ABRIR CURSOR
