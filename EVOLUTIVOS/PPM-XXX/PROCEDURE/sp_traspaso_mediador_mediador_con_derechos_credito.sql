@@ -36,26 +36,34 @@ BEGIN
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'CON DERECHOS Y OBLIGACIONES';
     
+    -------------------------------------------------------------------------------------------
+    ------------------------- DECLARACION DE CURSOR    ----------------------------------------
+    -------------------------------------------------------------------------------------------    
     DECLARE CURSOR CURSOR_TRASPASOS FOR
 	SELECT DISTINCT NUM_POLIZA,COD_MEDIADOR_RECEPTOR,SUBCLAVE_RECEPTOR,INTERMEDIACION_RECEPTOR,FECHA_EFECTO_SOLICITUD,COD_MEDIADOR_CEDENTE,SUBCLAVE_CEDENTE
 	FROM EXT.SOLICITUD_TRASPASO 
 	WHERE CASEID = :caseId;
 	
- ------------------------------- HANDLER EXCEPTION -------------------------
+    -------------------------------------------------------------------------------------------
+    ------------------------------- HANDLER EXCEPTION -----------------------------------------
+    -------------------------------------------------------------------------------------------
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'SQL ERROR_MESSAGE: ' ||
 			IFNULL(::SQL_ERROR_MESSAGE,'') || '. SQL_ERROR_CODE: ' || ::SQL_ERROR_CODE, cReport, io_contador);
 	END;
     ---------------------------------------------------------------------------
-     --Obtenemos tenant
+    
+    -------------------------------------------------------------------------------------------
+    ------------------------------- OBTENER VARIABLES -----------------------------------------
+    -------------------------------------------------------------------------------------------
+    -- TENANT
     SELECT EXT.LIB_GLOBAL_CESCE:getTenantID() INTO i_Tenant FROM DUMMY;
 
-    --Inicio
+    -- INICIO
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INICIO PROCEDIMIENTO v' || cVersion || ' with SESSION_USER '|| SESSION_USER, CReport, io_contador);
 
-
-    --OBTENER VALORES
+	-- OBTENER VALORES
 	SELECT DISTINCT 
 		CASE WHEN TIPO_TRASPASO = 'N' THEN 'TOTAL' ELSE 'PARCIAL' END
 		, COALESCE(COD_MEDIADOR_CEDENTE,'0000')
@@ -72,11 +80,15 @@ BEGIN
     	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
     	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
     	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
+        WHEN v_TipoMovimiento = 6 THEN 'OPERACIONES ESPECIALES'
     	END
     INTO v_DescTipoMovimiento
     FROM DUMMY;
     
-    -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
+   
+    -------------------------------------------------------------------------------------------
+    ------------------ COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P' -----------------------
+    -------------------------------------------------------------------------------------------
     IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
@@ -93,6 +105,10 @@ BEGIN
 
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
+    -------------------------------------------------------------------------------------------
+    ------------------------------- INSERTAR PÓLIZA TRASPASO ----------------------------------
+    -------------------------------------------------------------------------------------------
+    -- ABRIR CURSOR
     OPEN CURSOR_TRASPASOS;
     FOR CT AS CURSOR_TRASPASOS DO
 		
@@ -149,14 +165,16 @@ BEGIN
         	CRT.NUM_ANUALIDAD IS NOT NULL AND ((C.P_ESPECIAL_EMISION IS NOT NULL AND C.P_ESPECIAL_EMISION <> 0)  OR (C.P_ESPECIAL_RENOVACION IS NOT NULL AND C.P_ESPECIAL_RENOVACION <> 0)) THEN
         		C.FECHA_VENCIMIENTO
         END -- FECHA_FIN_OPESP
-        FROM EXT.CARTERA C LEFT JOIN (SELECT *
-						FROM (
-							SELECT *
-							,ROW_NUMBER() OVER (PARTITION BY CR.NUM_POLIZA, CR.COD_MEDIADOR ORDER BY CR.NUM_ANUALIDAD DESC) AS RN
-							FROM EXT.CARTERA CR WHERE CR.COD_MEDIADOR = CT.COD_MEDIADOR_CEDENTE AND CR.NUM_POLIZA = CT.NUM_POLIZA AND CR.RAMO = cRamo AND CR.ACTIVO = 1
-							AND CR.NUM_POLIZA = CT.NUM_POLIZA
-							
-						) WHERE RN = 1) CRT ON C.NUM_POLIZA = CRT.NUM_POLIZA AND C.COD_MEDIADOR = CRT.COD_MEDIADOR AND C.COD_SUBCLAVE = CRT.COD_SUBCLAVE AND C.NUM_ANUALIDAD = CRT.NUM_ANUALIDAD
+        FROM EXT.CARTERA C 
+        -- JOIN ANUALIDAD ACTUAL
+        LEFT JOIN (SELECT *
+						,ROW_NUMBER() OVER (PARTITION BY CR.NUM_POLIZA, CR.COD_MEDIADOR, CR.COD_SUBCLAVE ORDER BY CR.NUM_ANUALIDAD DESC) AS RN
+					FROM EXT.CARTERA CR 
+					WHERE CR.COD_MEDIADOR = CT.COD_MEDIADOR_CEDENTE AND CR.COD_SUBCLAVE = CT.SUBCLAVE_CEDENTE AND CR.NUM_POLIZA = CT.NUM_POLIZA 
+						AND CR.RAMO = cRamo AND CR.ACTIVO = 1 AND CR.NUM_POLIZA = CT.NUM_POLIZA
+        	        ) CRT ON C.NUM_POLIZA = CRT.NUM_POLIZA AND C.COD_MEDIADOR = CRT.COD_MEDIADOR AND C.COD_SUBCLAVE = CRT.COD_SUBCLAVE 
+        	        	AND C.NUM_ANUALIDAD = CRT.NUM_ANUALIDAD AND CRT.RN = 1
+		-- JOIN PLANES DE COMISIONAMIENTO
 		LEFT JOIN (
 	        SELECT 
 	            CART.NUM_POLIZA,
@@ -200,13 +218,15 @@ BEGIN
     CLOSE CURSOR_TRASPASOS;
     
     
-    -- --ACTUALIZAMOS MEDIADOR CEDENTE
+    -------------------------------------------------------------------------------------------
+    ------------------------------- ACTUALIZAR MEDIADOR CEDENTE--------------------------------
+    -------------------------------------------------------------------------------------------
     UPDATE EXT.CARTERA
     SET ACTIVO = 0,
-    FECHA_FIN = ADD_DAYS(v_fechaTraspaso,-1),
-    MODIF_USER = 'SMM',
-    MODIF_SOURCE = v_modifSource,
-    MODIF_DATE = CURRENT_TIMESTAMP
+	    FECHA_FIN = ADD_DAYS(v_fechaTraspaso,-1),
+	    MODIF_USER = 'SMM',
+	    MODIF_SOURCE = v_modifSource,
+	    MODIF_DATE = CURRENT_TIMESTAMP
     WHERE COD_MEDIADOR = :v_codMediadorCedente
     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
     AND RAMO = cRamo
@@ -216,30 +236,31 @@ BEGIN
 	
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'ACTUALIZADOS ' || ::ROWCOUNT || ' REGISTROS. MEDIADOR CEDENTE ' || :v_codMediadorCedente||'-'||:v_subClaveMediadorCedente, cReport, io_contador);
 	
+    -- FIN
     CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO ' || cVersion || ' with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 
 END;
 
 
--- DO BEGIN 
+DO BEGIN 
 
--- DECLARE vRAMO VARCHAR(50) = 'CREDITO';
--- DECLARE vCASEID BIGINT = 1806;
+DECLARE vRAMO VARCHAR(50) = 'CREDITO';
+DECLARE vCASEID BIGINT = 1806;
 
--- TRUNCATE TABLE EXT.CARTERA;
--- INSERT INTO EXT.CARTERA SELECT * FROM EXT.CARTERA_BKP_04022025 ;
--- DELETE FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%';
+TRUNCATE TABLE EXT.CARTERA;
+INSERT INTO EXT.CARTERA SELECT * FROM EXT.CARTERA_BKP_04022025 ;
+DELETE FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%';
 
--- SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,FECHA_INICIO,FECHA_FIN FROM EXT.CARTERA WHERE COD_MEDIADOR = '0004' AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_AVAL_HOST;
+SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,FECHA_INICIO,FECHA_FIN FROM EXT.CARTERA WHERE COD_MEDIADOR = '0004' AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_AVAL_HOST;
 
 	
--- CALL EXT.sp_traspaso_mediador_mediador_con_derechos_credito(vCASEID);
+CALL EXT.sp_traspaso_mediador_mediador_con_derechos_credito(vCASEID);
 
--- SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE,MODIF_USER 
--- FROM EXT.CARTERA 
--- WHERE (COD_MEDIADOR IN('0004') OR MODIF_USER = 'SMM') AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_AVAL_HOST,NUM_POLIZA;
+SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE,MODIF_USER 
+FROM EXT.CARTERA 
+WHERE (COD_MEDIADOR IN('0004') OR MODIF_USER = 'SMM') AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_AVAL_HOST,NUM_POLIZA;
 
 
--- SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%';
+SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%';
 
--- END;
+END;

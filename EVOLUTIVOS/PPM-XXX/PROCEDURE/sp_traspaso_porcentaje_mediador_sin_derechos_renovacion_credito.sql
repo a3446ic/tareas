@@ -16,7 +16,10 @@ AS
 	----------------------------------------------------------------------------------------------- 
 */
 BEGIN
-    -- DECLARACION DE VARIABLES
+	-------------------------------------------------------------------------------------------
+    ------------------------- DECLARACIÓN DE VARIABLES ----------------------------------------
+    -------------------------------------------------------------------------------------------
+    -- VARIABLES
     DECLARE i_Tenant VARCHAR(4);
 	DECLARE vProcedure VARCHAR(127);
 	DECLARE io_contador Number := 0;
@@ -36,27 +39,36 @@ BEGIN
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN ';
     
-    -- DECLARACION DE CURSOR    
+    -------------------------------------------------------------------------------------------
+    ------------------------- DECLARACION DE CURSOR    ----------------------------------------
+    -------------------------------------------------------------------------------------------   
     DECLARE CURSOR CURSOR_TRASPASOS FOR
 	SELECT DISTINCT NUM_POLIZA,COD_MEDIADOR_RECEPTOR,SUBCLAVE_RECEPTOR,INTERMEDIACION_RECEPTOR,FECHA_EFECTO_SOLICITUD,COD_MEDIADOR_CEDENTE,SUBCLAVE_CEDENTE
 	FROM EXT.SOLICITUD_TRASPASO 
 	WHERE CASEID = :caseId;
     
 
-    ------------------------------- HANDLER EXCEPTION -------------------------
+    -------------------------------------------------------------------------------------------
+    ------------------------------- HANDLER EXCEPTION -----------------------------------------
+    -------------------------------------------------------------------------------------------
+	
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'SQL ERROR_MESSAGE: ' ||
 			IFNULL(::SQL_ERROR_MESSAGE,'') || '. SQL_ERROR_CODE: ' || ::SQL_ERROR_CODE, cReport, io_contador);
 	END;
     ---------------------------------------------------------------------------
-     --Obtenemos tenant
+    
+	-------------------------------------------------------------------------------------------
+    ------------------------------- OBTENER VARIABLES -----------------------------------------
+    -------------------------------------------------------------------------------------------
+    -- TENANT
     SELECT EXT.LIB_GLOBAL_CESCE:getTenantID() INTO i_Tenant FROM DUMMY;
 
-    --Inicio
+    -- INICIO
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INICIO PROCEDIMIENTO v' || cVersion || ' with SESSION_USER '|| SESSION_USER, CReport, io_contador);
 
-	--OBTENER VALORES
+	-- OBTENER VALORES
 	SELECT DISTINCT 
 		CASE WHEN TIPO_TRASPASO = 'N' THEN 'TOTAL' ELSE 'PARCIAL' END
 		, COALESCE(COD_MEDIADOR_CEDENTE,'0000')
@@ -73,6 +85,7 @@ BEGIN
     	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
     	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
     	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
+		WHEN v_TipoMovimiento = 6 THEN 'OPERACIONES ESPECIALES'
     	END
     INTO v_DescTipoMovimiento
     FROM DUMMY;
@@ -95,7 +108,11 @@ BEGIN
 	
 	
 	
-	-- ABRIR CURSOR
+	-------------------------------------------------------------------------------------------
+    ------------------------------- INSERTAR PÓLIZA TRASPASO -----------------------------------------
+    -------------------------------------------------------------------------------------------
+    -- ABRIR CURSOR
+    
     OPEN CURSOR_TRASPASOS;
     FOR CT AS CURSOR_TRASPASOS DO
  
@@ -158,7 +175,10 @@ BEGIN
   	CLOSE CURSOR_TRASPASOS;
 
 
-    --ACTUALIZAMOS MEDIADOR CEDENTE 
+    -------------------------------------------------------------------------------------------
+    ------------------------------- ACTUALIZAR MEDIADOR CEDENTE--------------------------------
+    -------------------------------------------------------------------------------------------
+	
 	UPDATE C
 	SET ACTIVO = 2
 	, P_INTERMEDIACION = (CASE 
@@ -173,22 +193,24 @@ BEGIN
 		, MODIF_USER = 'SMM'
 		, MODIF_SOURCE = v_modifSource
 		, MODIF_DATE = CURRENT_TIMESTAMP
-	FROM EXT.CARTERA C INNER JOIN (SELECT *
-						FROM (
-							SELECT *
-							,ROW_NUMBER() OVER (PARTITION BY NUM_POLIZA, COD_MEDIADOR ORDER BY NUM_ANUALIDAD DESC) AS RN
-							FROM EXT.CARTERA CRT WHERE COD_MEDIADOR = CRT.COD_MEDIADOR AND NUM_POLIZA = CRT.NUM_POLIZA AND RAMO = 'CREDITO' AND ACTIVO = 1
-							
-						) WHERE RN = 1) CT ON C.NUM_POLIZA = CT.NUM_POLIZA AND C.COD_MEDIADOR = CT.COD_MEDIADOR AND C.COD_SUBCLAVE = CT.COD_SUBCLAVE AND C.NUM_ANUALIDAD = CT.NUM_ANUALIDAD
+	FROM EXT.CARTERA C 
+	--JOIN ANUALIDAD ACTUAL
+	INNER JOIN (SELECT *
+					,ROW_NUMBER() OVER (PARTITION BY NUM_POLIZA, COD_MEDIADOR, COD_SUBCLAVE ORDER BY NUM_ANUALIDAD DESC) AS RN
+				FROM EXT.CARTERA CRT 
+				WHERE COD_MEDIADOR = CRT.COD_MEDIADOR AND NUM_POLIZA = CRT.NUM_POLIZA AND RAMO = cRamo AND ACTIVO = 1
+				) CT ON C.NUM_POLIZA = CT.NUM_POLIZA AND C.COD_MEDIADOR = CT.COD_MEDIADOR AND C.COD_SUBCLAVE = CT.COD_SUBCLAVE 
+					AND C.NUM_ANUALIDAD = CT.NUM_ANUALIDAD AND CT.RN = 1
 	WHERE C.COD_MEDIADOR = v_codMediadorCedente
 	AND C.COD_SUBCLAVE = v_subClaveMediadorCedente
-	AND C.RAMO = 'CREDITO'
+	AND C.RAMO = cRamo
 	AND C.ACTIVO = 1
 	AND C.NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId)
 	;
     
     CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'ACTUALIZADOS ' || ::ROWCOUNT || ' REGISTROS. MEDIADOR CEDENTE ' || :v_codMediadorCedente||'-'||:v_subClaveMediadorCedente, cReport, io_contador);
 	
+	--FIN
     CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO ' || cVersion || ' with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 
 
