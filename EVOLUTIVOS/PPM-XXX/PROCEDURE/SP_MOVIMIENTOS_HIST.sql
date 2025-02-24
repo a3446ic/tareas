@@ -5,7 +5,7 @@ DECLARE io_contador Number := 0;
 DECLARE numLin Number := 0;
 DECLARE numLineasFichero Number := 0;
 DECLARE i_Tenant VARCHAR(127);
-DECLARE cVersion CONSTANT VARCHAR(2) := '11';
+DECLARE cVersion CONSTANT VARCHAR(2) := '12';
 
 DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_MOVIMIENTOS_HIST';
 DECLARE cRegExpFecha CONSTANT VARCHAR(10) := '([0-9]+)';
@@ -27,6 +27,7 @@ DECLARE i_rev Number := 0; -- Número de ejecución
 -- v09 - Se ha añadido la creación del backup de cartera y la eliminación de los backups anteriores a 3 meses
 -- v10 - Para los ficheros de tipo MVCAR se realiza la llamada al procedimiento SP_CARGAR_POLIZAS_TRASPASO. Se comenta la llamada SP_DETERMINAR_CIC
 -- v11 - Insertar registro en REGISTROS_INTERFACES. Actualizar estado SUCCESS/FAILED según el resultado de la carga
+-- v12 - FECHA_INI y FECHA_FIN la que viene por defecto
 ---------------------------------------------------------------------------------------------------------------------
 
 DECLARE EXIT HANDLER FOR SQLEXCEPTION 
@@ -672,25 +673,27 @@ IF IN_FILENAME LIKE '%MVCAR%' THEN
         i.DESC_SEGMENTO_EMP,
         i.IND_FIRMA_DIGITAL,
         i.IDAGENTE,
-        (SELECT 
-            CASE WHEN (i.FECHA_INI IS NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY ) = 1) THEN
-                TO_DATE(i.FECHA_FIN,'YYYYMMDD')
-            ELSE
-                CASE WHEN (i.FECHA_FIN IS NULL AND TO_DATE(i.FECHA_INI, 'YYYYMMDD') > TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD') AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY ) = 1) THEN
-                    TO_DATE(i.FECHA_VENCIMIENTO,'YYYYMMDD')
-                ELSE
-                    CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_INI) FROM DUMMY ) = 1 THEN 
-                        TO_DATE(i.FECHA_INI, 'YYYYMMDD')
-                    ELSE
-                        CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_EFECTO) FROM DUMMY ) = 1 THEN
-                            TO_DATE(i.FECHA_EFECTO, 'YYYYMMDD')
-                        ELSE
-                            TO_DATE(i.FECHA_EMISION, 'YYYYMMDD')
-                        END
-                    END
-                END
-            END
-        FROM DUMMY),
+        -- comentado por v12
+        -- (SELECT 
+        --     CASE WHEN (i.FECHA_INI IS NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY ) = 1) THEN
+        --         TO_DATE(i.FECHA_FIN,'YYYYMMDD')
+        --     ELSE
+        --         CASE WHEN (i.FECHA_FIN IS NULL AND TO_DATE(i.FECHA_INI, 'YYYYMMDD') > TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD') AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY ) = 1) THEN
+        --             TO_DATE(i.FECHA_VENCIMIENTO,'YYYYMMDD')
+        --         ELSE
+        --             CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_INI) FROM DUMMY ) = 1 THEN 
+        --                 TO_DATE(i.FECHA_INI, 'YYYYMMDD')
+        --             ELSE
+        --                 CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_EFECTO) FROM DUMMY ) = 1 THEN
+        --                     TO_DATE(i.FECHA_EFECTO, 'YYYYMMDD')
+        --                 ELSE
+        --                     TO_DATE(i.FECHA_EMISION, 'YYYYMMDD')
+        --                 END
+        --             END
+        --         END
+        --     END
+        -- FROM DUMMY),
+        i.FECHA_INI,
         /*
         (SELECT CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_INI) FROM DUMMY ) = 1 THEN 
             TO_DATE(i.FECHA_INI)
@@ -717,17 +720,19 @@ IF IN_FILENAME LIKE '%MVCAR%' THEN
                 END
             END
         END FROM DUMMY),*/
-        (SELECT 
-            CASE WHEN (i.FECHA_FIN IS NOT NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY) = 1) THEN
-                TO_DATE(i.FECHA_FIN, 'YYYYMMDD')
-            ELSE
-                CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY) = 1  THEN
-                    TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD')
-                ELSE
-                    NULL
-                END
-            END
-        FROM DUMMY),
+         -- comentado por v12
+        -- (SELECT 
+        --     CASE WHEN (i.FECHA_FIN IS NOT NULL AND (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_FIN) FROM DUMMY) = 1) THEN
+        --         TO_DATE(i.FECHA_FIN, 'YYYYMMDD')
+        --     ELSE
+        --         CASE WHEN (SELECT OCCURRENCES_REGEXPR(cRegExpFecha IN i.FECHA_VENCIMIENTO) FROM DUMMY) = 1  THEN
+        --             TO_DATE(i.FECHA_VENCIMIENTO, 'YYYYMMDD')
+        --         ELSE
+        --             NULL
+        --         END
+        --     END
+        -- FROM DUMMY),
+        i.FECHA_FIN,
         /*
         VERSION PREVIA PARA INSERTAR FECHA_FIN
         (SELECT CASE WHEN i.FECHA_FIN IS NOT NULL THEN
