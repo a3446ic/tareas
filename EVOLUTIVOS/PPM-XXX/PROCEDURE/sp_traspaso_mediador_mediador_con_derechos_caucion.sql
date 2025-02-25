@@ -62,7 +62,8 @@ BEGIN
 		, COD_MEDIADOR_CEDENTE
 		, SUBCLAVE_CEDENTE
 		, FECHA_EFECTO_SOLICITUD
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso 
+		, TIPO_MOVIMIENTO
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento  
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
     
 	-- TIPO MOVIMIENTO
@@ -95,8 +96,7 @@ BEGIN
 		
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN AVAL MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
-		
-		v_modifSource:= 'AVAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
+		v_modifSource:= 'EXPEDIENTE MEDIADOR MEDIADOR '|| :cDerechosObligaciones || ' ' || :caseId;
 		
 		-- ABRIR CURSOR
 	    OPEN CURSOR_TRASPASOS;
