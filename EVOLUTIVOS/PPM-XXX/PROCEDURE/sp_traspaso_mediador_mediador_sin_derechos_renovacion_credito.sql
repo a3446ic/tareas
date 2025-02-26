@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito (IN caseId BIGINT)
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -32,6 +32,7 @@ BEGIN
     DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
 	DECLARE v_TipoMovimiento INT;
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
+	DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(250) := 'sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
@@ -75,7 +76,8 @@ BEGIN
 		, SUBCLAVE_CEDENTE
 		, FECHA_EFECTO_SOLICITUD
 		, TIPO_MOVIMIENTO
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento 
+		, 'MANUAL - CASEID: ' || :caseId
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser 
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
     
 	-- TIPO MOVIMIENTO
@@ -106,7 +108,7 @@ BEGIN
 	END IF;
 	
 
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
     
     -------------------------------------------------------------------------------------------
@@ -164,8 +166,8 @@ BEGIN
 			2,
 			CURRENT_TIMESTAMP,
 			CURRENT_TIMESTAMP,
-			'SMM',
-			v_modifSource,
+			v_ModifUser,
+			nombreCasoOrigen,
 			NULL,
 			NULL 
 		FROM CTE
@@ -189,8 +191,8 @@ BEGIN
 							FROM EXT.CARTERA WHERE COD_MEDIADOR = C.COD_MEDIADOR AND COD_SUBCLAVE = C.COD_SUBCLAVE AND NUM_POLIZA = C.NUM_POLIZA AND RAMO = cRamo AND ACTIVO = 1  
 						) CT WHERE RN = 1
 					)
-		, MODIF_USER = 'SMM'
-		, MODIF_SOURCE = v_modifSource
+		, MODIF_USER = v_ModifUser
+		, MODIF_SOURCE = nombreCasoOrigen
 		, MODIF_DATE = CURRENT_TIMESTAMP
 	FROM EXT.CARTERA C
 	WHERE C.COD_MEDIADOR = v_codMediadorCedente

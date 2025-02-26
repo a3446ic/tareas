@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_operaciones_especiales_caucion (IN caseId BIGINT)
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_operaciones_especiales_caucion (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -39,6 +39,7 @@ BEGIN
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
 	DECLARE v_FechaIncioTraspaso VARCHAR(1);
 	DECLARE v_NumPoliza VARCHAR(10);
+	DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(250) := 'sp_traspaso_operaciones_especiales_caucion';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
@@ -84,7 +85,8 @@ BEGIN
 		, FECHA_EFECTO_SOLICITUD
 		, TIPO_MOVIMIENTO
 		, UPPER(FECHA_INICIO_TRASPASO)
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento,v_FechaIncioTraspaso 
+		, 'MANUAL - CASEID: ' || :caseId
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento,v_FechaIncioTraspaso, v_ModifUser 
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
 	
     -- TIPO MOVIMIENTO
@@ -113,7 +115,7 @@ BEGIN
 		v_modifSource:= 'TRASPASO PARCIAL '||:v_DescTipoMovimiento|| ' ' || cDerechosObligaciones || ' - CASEID: ' || :caseId;
 	-- END IF;
 
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||:v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO AVAL ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
 	
 	
@@ -173,8 +175,8 @@ BEGIN
 	        1, --ACTIVO
 	        CURRENT_TIMESTAMP,
 	        CURRENT_TIMESTAMP,
-	        'SMM',
-	        v_modifSource,
+	        v_ModifUser,
+	        nombreCasoOrigen,
 	        CASE
 	        	-- APLICAR ANUALIDAD ACTUAL: FECHA EFECTO DE LA ANUALIDAD ACTUAL
 	        	WHEN C.NUM_AVAL_HOST = CT.COD_AVAL THEN CT.FECHA_EFECTO_SOLICITUD
@@ -207,15 +209,15 @@ BEGIN
 	UPDATE EXT.CARTERA
     SET ACTIVO = 0,
     FECHA_FIN = (CASE WHEN NUM_FIANZA IS NULL THEN ADD_DAYS(v_fechaTraspaso,-1) ELSE FECHA_FIN END),
-    MODIF_USER = 'SMM',
-    MODIF_SOURCE = v_modifSource,
+    MODIF_USER = v_ModifUser,
+    MODIF_SOURCE = nombreCasoOrigen,
     MODIF_DATE = CURRENT_TIMESTAMP
     WHERE COD_MEDIADOR = :v_codMediadorCedente
     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
     AND RAMO = cRamo
     AND ACTIVO = 1
     AND NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId)
-    AND MODIF_USER <> 'SMM'
+    AND MODIF_USER <> v_ModifUser
     AND CAST(CREATEDATE AS DATE) <> CURRENT_DATE
     ;
     

@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_subclaves_caucion (IN caseId BIGINT)
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_subclaves_caucion (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -29,12 +29,13 @@ BEGIN
     DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
 	DECLARE v_TipoMovimiento INT;
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
+	DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_subclaves_caucion';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CAUCION';
-    DECLARE cDerechosObligaciones NVARCHAR(50) := '';
+    DECLARE cDerechosObligaciones NVARCHAR(50) := 'CAUCION';
     
 	-- DECLARACION DE CURSOR    
     DECLARE CURSOR CURSOR_TRASPASOS FOR
@@ -63,7 +64,8 @@ BEGIN
 		, SUBCLAVE_CEDENTE
 		, FECHA_EFECTO_SOLICITUD
 		, TIPO_MOVIMIENTO
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento  
+		, 'MANUAL - CASEID: ' || :caseId
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser  
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
     
 	-- TIPO MOVIMIENTO
@@ -79,7 +81,7 @@ BEGIN
     FROM DUMMY;
 
     -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
-    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(DISTINCT COD_SUBCLAVE) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE <> v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
     	v_tipoTraspaso:= 'PARCIAL';
@@ -95,7 +97,7 @@ BEGIN
 
 	IF v_tipoTraspasoCaucion = 'expediente' THEN
 		
-		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspasoCaucion) || ' CAUCIÓN AVAL MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO EXPEDIENTE ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
 		v_modifSource:= 'EXPEDIENTE MEDIADOR MEDIADOR '|| :cDerechosObligaciones || ' ' || :caseId;
 		
@@ -141,8 +143,8 @@ BEGIN
 			"ACTIVO",
 			CURRENT_TIMESTAMP, --CREATION_DATE
 			CURRENT_TIMESTAMP, --MODIF_DATE
-			'SMM', --CREATION_USER
-			v_modifSource, --MODIF_SOURCE
+			v_ModifUser, --CREATION_USER
+			nombreCasoOrigen, --MODIF_SOURCE
 			NULL, --FECHA_INICIO_OPESP
 			NULL -- FECHA_FIN_OPESP
 			FROM EXT.CARTERA
@@ -163,8 +165,8 @@ BEGIN
 	    UPDATE EXT.CARTERA
 	    SET ACTIVO = 0,	   
 	    -- FECHA_FIN = (CASE WHEN NUM_FIANZA IS NULL THEN ADD_DAYS(v_fechaTraspaso,-1) ELSE FECHA_FIN END),
-	    MODIF_USER = 'SMM',
-	    MODIF_SOURCE = v_modifSource,
+	    MODIF_USER = v_ModifUser,
+	    MODIF_SOURCE = nombreCasoOrigen,
 	    MODIF_DATE = CURRENT_TIMESTAMP
 	    WHERE COD_MEDIADOR = :v_codMediadorCedente
 	    AND COD_SUBCLAVE = :v_subClaveMediadorCedente
@@ -178,7 +180,7 @@ BEGIN
 		
 		
 	ELSE
-		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' || UPPER(:v_tipoTraspaso) || ' CAUCIÓN AVAL MEDIADOR > MEDIADOR. CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO AVAL ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 		
 		v_modifSource:= 'AVAL MEDIADOR MEDIADOR '|| cDerechosObligaciones ||' ' || :caseId;
 		
@@ -224,8 +226,8 @@ BEGIN
 			"ACTIVO",
 			CURRENT_TIMESTAMP, --CREATION_DATE
 			CURRENT_TIMESTAMP, --MODIF_DATE
-			'SMM', --CREATION_USER
-			v_modifSource, --MODIF_SOURCE
+			v_ModifUser, --CREATION_USER
+			nombreCasoOrigen, --MODIF_SOURCE
 			NULL, --FECHA_INICIO_OPESP
 			NULL -- FECHA_FIN_OPESP
 			FROM EXT.CARTERA
@@ -246,8 +248,8 @@ BEGIN
 		--ACTUALIZAMOS MEDIADOR CEDENTE
 	    UPDATE EXT.CARTERA
 	    SET ACTIVO = 0,	   
-	    MODIF_USER = 'SMM',
-	    MODIF_SOURCE = v_modifSource,
+	    MODIF_USER = v_ModifUser,
+	    MODIF_SOURCE = nombreCasoOrigen,
 	    MODIF_DATE = CURRENT_TIMESTAMP
 	    WHERE COD_MEDIADOR = :v_codMediadorCedente
 	    AND COD_SUBCLAVE = :v_subClaveMediadorCedente
