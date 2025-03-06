@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_con_derechos_caucion (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_subclaves_caucion (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -7,7 +7,7 @@ AS
 	| Company: Inycom 
 	| Initial Version Date: 03/02/2025 
 	|---------------------------------------------------------------------------------------------- 
-	| Procedure Purpose: TRASPASO DE CARTERA DE UN MEDIADOR A OTRO MEDIADOR CON DERECHOS Y OBLIGACIONES CAUCIÓN
+	| Procedure Purpose: TRASPASO DE CARTERA ENTRE SUBCLAVES CAUCIÓN
 	| 
 	| Version: 1	
 	|
@@ -30,13 +30,12 @@ BEGIN
 	DECLARE v_TipoMovimiento INT;
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
 	DECLARE v_ModifUser NVARCHAR(50);
-
     -- CONSTANTES
-    DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_mediador_mediador_con_derechos_caucion';
+    DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_subclaves_caucion';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CAUCION';
-    DECLARE cDerechosObligaciones NVARCHAR(50) := 'CON DERECHOS Y OBLIGACIONES';
+    DECLARE cDerechosObligaciones NVARCHAR(50) := 'CAUCION';
     
 	-- DECLARACION DE CURSOR    
     DECLARE CURSOR CURSOR_TRASPASOS FOR
@@ -66,7 +65,7 @@ BEGIN
 		, FECHA_EFECTO_SOLICITUD
 		, TIPO_MOVIMIENTO
 		, 'MANUAL - CASEID: ' || :caseId
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser  
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
     
 	-- TIPO MOVIMIENTO
@@ -76,12 +75,13 @@ BEGIN
     	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
     	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
     	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
+        WHEN v_TipoMovimiento = 8 THEN 'ENTRE SUBCLAVES'
     	END
     INTO v_DescTipoMovimiento
     FROM DUMMY;
 
     -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
-    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(DISTINCT COD_SUBCLAVE) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE <> v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
     	v_tipoTraspaso:= 'PARCIAL';
@@ -130,8 +130,10 @@ BEGIN
 			CT.COD_MEDIADOR_RECEPTOR,
 			CT.SUBCLAVE_RECEPTOR,
 			CT.INTERMEDIACION_RECEPTOR,
-			(CASE WHEN NUM_FIANZA IS NULL THEN v_fechaTraspaso ELSE FECHA_INICIO END), --FECHA_INICIO
-			'2200-01-01', --FECHA_FIN
+			-- (CASE WHEN NUM_FIANZA IS NULL THEN v_fechaTraspaso ELSE FECHA_INICIO END), --FECHA_INICIO
+            "FECHA_INICIO",
+			-- '2200-01-01', --FECHA_FIN
+            "FECHA_FIN",
 			"P_ESPECIAL_EMISION",
 			"P_ESPECIAL_RENOVACION",
 			"NIF_TOMADOR",
@@ -162,7 +164,7 @@ BEGIN
 	    --ACTUALIZAMOS MEDIADOR CEDENTE
 	    UPDATE EXT.CARTERA
 	    SET ACTIVO = 0,	   
-	    FECHA_FIN = (CASE WHEN NUM_FIANZA IS NULL THEN ADD_DAYS(v_fechaTraspaso,-1) ELSE FECHA_FIN END),
+	    -- FECHA_FIN = (CASE WHEN NUM_FIANZA IS NULL THEN ADD_DAYS(v_fechaTraspaso,-1) ELSE FECHA_FIN END),
 	    MODIF_USER = v_ModifUser,
 	    MODIF_SOURCE = nombreCasoOrigen,
 	    MODIF_DATE = CURRENT_TIMESTAMP
@@ -211,8 +213,10 @@ BEGIN
 			CT.COD_MEDIADOR_RECEPTOR, --COD_MEDIADOR
 			CT.SUBCLAVE_RECEPTOR, --COD_SUBCLAVE
 			CT.INTERMEDIACION_RECEPTOR,
-	        (CASE WHEN NUM_FIANZA IS NULL THEN v_fechaTraspaso ELSE FECHA_INICIO END), --FECHA_INICIO
-			'2200-01-01', --FECHA_FIN
+	        -- (CASE WHEN NUM_FIANZA IS NULL THEN v_fechaTraspaso ELSE FECHA_INICIO END), --FECHA_INICIO
+            "FECHA_INICIO",
+			-- '2200-01-01', --FECHA_FIN
+            "FECHA_FIN",
 			"P_ESPECIAL_EMISION",
 			"P_ESPECIAL_RENOVACION",
 			"NIF_TOMADOR",

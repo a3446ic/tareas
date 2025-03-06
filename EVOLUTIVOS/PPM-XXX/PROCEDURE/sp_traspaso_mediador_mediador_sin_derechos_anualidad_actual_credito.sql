@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito (IN caseId BIGINT)
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -34,6 +34,7 @@ BEGIN
     DECLARE v_tipoTraspasoCaucion NVARCHAR(100);
 	DECLARE v_TipoMovimiento INT;
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
+	DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(250) := 'sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
@@ -75,8 +76,8 @@ BEGIN
 		, COALESCE(COD_MEDIADOR_CEDENTE,'0000')
 		, COALESCE(SUBCLAVE_CEDENTE,'0000')
 		, FECHA_EFECTO_SOLICITUD
-		, TIPO_MOVIMIENTO
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento 
+		, TIPO_MOVIMIENTO, 'MANUAL - CASEID: ' || :caseId
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser  
 	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
 	
     -- TIPO MOVIMIENTO
@@ -106,7 +107,7 @@ BEGIN
 		v_modifSource:= 'TRASPASO PARCIAL '||:v_DescTipoMovimiento|| ' ' || cDerechosObligaciones || ' - CASEID: ' || :caseId;
 	END IF;
 
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 
     -------------------------------------------------------------------------------------------
     ------------------------------- INSERTAR PÓLIZA TRASPASO -----------------------------------------
@@ -154,8 +155,8 @@ BEGIN
         C."ACTIVO",
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
-        'SMM',
-        v_modifSource,
+        v_ModifUser,
+        nombreCasoOrigen,
         NULL,
         NULL
         FROM EXT.CARTERA C 
@@ -185,8 +186,8 @@ BEGIN
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'ACTUALIZAMOS ANUALIDAD ACTUAL', cReport, io_contador);
 	UPDATE C
 	SET ACTIVO = 0		
-		, MODIF_USER = 'SMM'
-		, MODIF_SOURCE = v_modifSource
+		, MODIF_USER = v_ModifUser
+		, MODIF_SOURCE = nombreCasoOrigen
 		, MODIF_DATE = CURRENT_TIMESTAMP
 	FROM EXT.CARTERA C 
 	-- JOIN ANUALIDAD ACTUAL
@@ -215,8 +216,8 @@ BEGIN
 							WHERE C.COD_MEDIADOR = CART.COD_MEDIADOR AND C.COD_SUBCLAVE = CART.COD_SUBCLAVE AND C.NUM_POLIZA = CART.NUM_POLIZA 
 								AND CART.RAMO = cRamo AND CART.ACTIVO = 1)
 					WHERE RN = 1) 		
-		, MODIF_USER = 'SMM'
-		, MODIF_SOURCE = v_modifSource
+		, MODIF_USER = v_ModifUser
+		, MODIF_SOURCE = nombreCasoOrigen
 		, MODIF_DATE = CURRENT_TIMESTAMP
 	FROM EXT.CARTERA C 
 	-- JOIN ANUALIDADES ANTERIORES
