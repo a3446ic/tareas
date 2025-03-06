@@ -10,6 +10,8 @@ BEGIN
 -- v9 Se generan detalles de recibos de facturas para depositos y pagos sin calculos
 -- v10 Se genera la fecha de alta con el día previo
 -- v12
+-- v13 Añadir un DISTINCT para evitar los duplicados a aquellos mediadores que tienen liquidaciones anticipadas
+-- 	   - Comprobar los recibos nuevos que nos les cuadra Cabecera vs Suma Detalle y ACTUALIZAR EL ESTADO a ‘WARNING’	
 
 -- actualizaOrder 'S' o 'N' para enviar datos al order
 	DECLARE IdRecibo BIGINT;						
@@ -22,7 +24,7 @@ BEGIN
 	DECLARE cReportTable CONSTANT VARCHAR(50) := 'SP_GENERAR_RECIBOS_FACTURAS';
 	DECLARE vIdFactura BIGINT;
 	DECLARE batchname VARCHAR(50);
-	DECLARE cVersion CONSTANT VARCHAR(2) := '12';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '13';
 
 -- ----------------------------------------------------------------------------------------------------
 -- Cursor para insertar facturas a partir de los recibos
@@ -102,7 +104,7 @@ BEGIN
 			MODIF_DATE,
 			MODIF_USER
 		)
-		SELECT
+		SELECT DISTINCT -- v13 añadir un DISTINCT para evitar los duplicados a aquellos mediadores que tienen liquidaciones anticipadas
 			--CURRENT_DATE,
 			ADD_DAYS (CURRENT_DATE, -1) as FECHA_ALTA,
 			CASE WHEN pay.EARNINGCODEID = 'SIN_PAGO' THEN 'SIN_PAGO' ELSE  ec.DESCRIPTION END as DESCRIPTION, --CONCEPTO
@@ -501,6 +503,30 @@ BEGIN
 -- ----------------------------------------------------------------------------------------------------
 -- Se Actualizan los datos de los recibos de FACTURA de NUEVO --> PENDIENTE. LOS DE INFO NO PASAN A FACTURAS
 -- ----------------------------------------------------------------------------------------------------
+
+-------------------------------------------------------------------------------------------------------
+-- v14: Comprobar los recibos nuevos que nos les cuadra Cabecera vs Suma Detalle y ACTUALIZAR EL ESTADO a ‘WARNING’
+	-- SELECT rf.IDRECIBO, rf.CONCEPTO, rf.IMPORTE, SUM(drf.IMPORTE_DET)
+	-- FROM EXT.RECIBOS_FACTURAS rf
+	-- INNER JOIN EXT.DETALLE_RECIBOS_FACTURAS drf  ON rf.IDRECIBO=drf.IDRECIBO
+	-- WHERE rf.ESTADO = 'NUEVO'
+	-- GROUP BY rf.IDRECIBO, rf.CONCEPTO, rf.IMPORTE;
+
+	UPDATE EXT.RECIBOS_FACTURAS rf
+	SET 
+		ESTADO = 'WARNING',
+		MODIF_DATE = CURRENT_TIMESTAMP
+	WHERE 
+		ESTADO = 'NUEVO' 
+		AND rf.IMPORTE <> (
+			SELECT SUM(drf.IMPORTE_DET) 
+			FROM EXT.DETALLE_RECIBOS_FACTURAS drf 
+			WHERE drf.IDRECIBO = rf.IDRECIBO
+		);
+
+		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'ACTUALIZADOS ' || To_VARCHAR(::ROWCOUNT) || ' REGISTROS EN EXT.RECIBOS_FACTURAS CON ESTADO WARNING' || rf.CONCEPTO || ' con Importe Cabecera ' || To_VARCHAR(sumaImporteCabecera) || ' y Suma Detalle ' || To_VARCHAR(sumaImporteDetalle) || ' NO CUADRA' , cReportTable, io_contador);
+	
+-------------------------------------------------------------------------------------------------------
 		CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Actualización de estado de NUEVO a INFO Para Concepto SIN_PAGO en EXT.RECIBOS_FACTURAS' , cReportTable, io_contador);
 
 		UPDATE EXT.RECIBOS_FACTURAS 
@@ -592,13 +618,16 @@ BEGIN
 ------------------------------------------------------------------------
 ----  Borramos tabla temporal EXT.DETALLE_RECIBOS_FACTURAS_TEMP --------
 ------------------------------------------------------------------------
+	IF (SELECT TABLE_NAME FROM SYS.TABLES where SCHEMA_NAME='EXT' and TABLE_NAME = 'DETALLE_RECIBOS_FACTURAS_TEMP' ) IS NOT NULL THEN
+		TRUNCATE TABLE EXT.DETALLE_RECIBOS_FACTURAS_TEMP;
+	END IF
 
-	DROP TABLE EXT.DETALLE_RECIBOS_FACTURAS_TEMP;
-	CALL EXT.LIB_GLOBAL_CESCE :w_debug (
-		i_Tenant,
-		'Borrada tabla temporal EXT.DETALLE_RECIBOS_FACTURAS_TEMP',
-		cReportTable,
-		io_contador
-	);
+	-- DROP TABLE EXT.DETALLE_RECIBOS_FACTURAS_TEMP;
+	-- CALL EXT.LIB_GLOBAL_CESCE :w_debug (
+	-- 	i_Tenant,
+	-- 	'Borrada tabla temporal EXT.DETALLE_RECIBOS_FACTURAS_TEMP',
+	-- 	cReportTable,
+	-- 	io_contador
+	-- );
 
 END
