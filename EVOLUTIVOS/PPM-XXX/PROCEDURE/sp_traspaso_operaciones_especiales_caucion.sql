@@ -55,7 +55,7 @@ BEGIN
 		,FECHA_EFECTO_SOLICITUD,COD_MEDIADOR_CEDENTE,SUBCLAVE_CEDENTE,FECHA_INICIO_TRASPASO
 		,P_ESPECIAL_EMISION,P_ESPECIAL_RENOVACION,COD_AVAL
 	FROM EXT.SOLICITUD_TRASPASO 
-	WHERE CASEID = :caseId;
+	WHERE CASEID = :caseId AND RAMO = cRamo;
     
 
     -------------------------------------------------------------------------------------------
@@ -87,7 +87,7 @@ BEGIN
 		, UPPER(FECHA_INICIO_TRASPASO)
 		, 'MANUAL - CASEID: ' || :caseId
 		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento,v_FechaIncioTraspaso, v_ModifUser 
-	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
+	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND RAMO = cRamo;
 	
     -- TIPO MOVIMIENTO
     SELECT CASE 
@@ -96,7 +96,8 @@ BEGIN
     	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
     	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
     	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
-    	WHEN v_TipoMovimiento = 6 THEN 'OPERACIONES ESPECIALES'
+        WHEN v_TipoMovimiento = 6 THEN 'OPERACIONES ESPECIALES'
+        WHEN v_TipoMovimiento = 8 THEN 'ENTRE SUBCLAVES'
     	END
     INTO v_DescTipoMovimiento
     FROM DUMMY;
@@ -216,7 +217,7 @@ BEGIN
     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
     AND RAMO = cRamo
     AND ACTIVO = 1
-    AND NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId)
+    AND NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND RAMO = cRamo)
     AND MODIF_USER <> v_ModifUser
     AND CAST(CREATEDATE AS DATE) <> CURRENT_DATE
     ;
