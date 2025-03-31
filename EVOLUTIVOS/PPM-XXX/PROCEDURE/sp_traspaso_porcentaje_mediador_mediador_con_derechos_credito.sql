@@ -46,7 +46,7 @@ BEGIN
     DECLARE CURSOR CURSOR_TRASPASOS FOR
 	SELECT DISTINCT NUM_POLIZA,COD_MEDIADOR_RECEPTOR,SUBCLAVE_RECEPTOR,INTERMEDIACION_RECEPTOR,FECHA_EFECTO_SOLICITUD,COD_MEDIADOR_CEDENTE,SUBCLAVE_CEDENTE
 	FROM EXT.SOLICITUD_TRASPASO 
-	WHERE CASEID = :caseId;
+	WHERE CASEID = :caseId AND RAMO = cRamo;
 	
     -------------------------------------------------------------------------------------------
     ------------------------------- HANDLER EXCEPTION -----------------------------------------
@@ -76,7 +76,7 @@ BEGIN
 		, TIPO_MOVIMIENTO
         , 'MANUAL - CASEID: ' || :caseId
 		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser 
-	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
+	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND RAMO = cRamo;
 	
     -- TIPO MOVIMIENTO
     SELECT CASE 
@@ -85,12 +85,14 @@ BEGIN
     	WHEN v_TipoMovimiento = 3 THEN 'TRASPASO %'
     	WHEN v_TipoMovimiento = 4 THEN 'ERROR CAPTURA'
     	WHEN v_TipoMovimiento = 5 THEN 'MEDIADOR > CANAL DIRECTO'
+        WHEN v_TipoMovimiento = 6 THEN 'OPERACIONES ESPECIALES'
+        WHEN v_TipoMovimiento = 8 THEN 'ENTRE SUBCLAVES'
     	END
     INTO v_DescTipoMovimiento
     FROM DUMMY;
     
     -- COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P'
-    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID AND RAMO = cRamo) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
     	v_tipoTraspaso:= 'PARCIAL';

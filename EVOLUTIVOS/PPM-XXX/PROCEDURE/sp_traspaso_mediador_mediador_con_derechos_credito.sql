@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_subclaves_credito (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
+CREATE OR REPLACE PROCEDURE EXT.sp_traspaso_mediador_mediador_con_derechos_credito (IN caseId BIGINT, IN nombreCasoOrigen VARCHAR(100))
 LANGUAGE SQLSCRIPT 
 AS
 /*
@@ -7,7 +7,7 @@ AS
 	| Company: Inycom 
 	| Initial Version Date: 03/02/2025 
 	|---------------------------------------------------------------------------------------------- 
-	| Procedure Purpose: TRASPASO DE CARTERA ENTRE SUBCLAVES
+	| Procedure Purpose: TRASPASO DE CARTERA DE UN MEDIADOR A OTRO MEDIADOR CON DERECHOS Y OBLIGACIONES
 	| 
 	| Version: 1	
 	|
@@ -31,7 +31,7 @@ BEGIN
 	DECLARE v_DescTipoMovimiento NVARCHAR(50);
     DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
-    DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_subclaves_credito';
+    DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_mediador_mediador_con_derechos_credito';
     DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
@@ -43,7 +43,7 @@ BEGIN
     DECLARE CURSOR CURSOR_TRASPASOS FOR
 	SELECT DISTINCT NUM_POLIZA,COD_MEDIADOR_RECEPTOR,SUBCLAVE_RECEPTOR,INTERMEDIACION_RECEPTOR,FECHA_EFECTO_SOLICITUD,COD_MEDIADOR_CEDENTE,SUBCLAVE_CEDENTE
 	FROM EXT.SOLICITUD_TRASPASO 
-	WHERE CASEID = :caseId;
+	WHERE CASEID = :caseId AND RAMO = cRamo;
 	
     -------------------------------------------------------------------------------------------
     ------------------------------- HANDLER EXCEPTION -----------------------------------------
@@ -72,8 +72,8 @@ BEGIN
 		, FECHA_EFECTO_SOLICITUD
 		, TIPO_MOVIMIENTO
         , 'MANUAL - CASEID: ' || :caseId
-		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser 
-	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId;
+		INTO v_tipoTraspaso,v_codMediadorCedente,v_subClaveMediadorCedente,v_fechaTraspaso,v_TipoMovimiento, v_ModifUser  
+	FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND RAMO = cRamo;
 	
     -- TIPO MOVIMIENTO
     SELECT CASE 
@@ -106,7 +106,7 @@ BEGIN
 	END IF;
 	
 
-	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'CASE ID: ' ||:caseID|| ' - TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
+	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'TRASPASO ' ||v_tipoTraspaso|| ' ' ||:v_DescTipoMovimiento || ' '  || :cDerechosObligaciones  || ' MEDIADOR CEDENTE: '|| :v_codMediadorCedente ||'-'||:v_subClaveMediadorCedente , CReport, io_contador);
 	
     -------------------------------------------------------------------------------------------
     ------------------------------- INSERTAR PÓLIZA TRASPASO ----------------------------------
@@ -159,7 +159,7 @@ BEGIN
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         v_ModifUser,
-        nombreCasoOrigen,
+		nombreCasoOrigen,
         CASE WHEN
         	CRT.NUM_ANUALIDAD IS NOT NULL AND ((C.P_ESPECIAL_EMISION IS NOT NULL AND C.P_ESPECIAL_EMISION <> 0)  OR (C.P_ESPECIAL_RENOVACION IS NOT NULL AND C.P_ESPECIAL_RENOVACION <> 0)) THEN
         		CT.FECHA_EFECTO_SOLICITUD
@@ -211,7 +211,7 @@ BEGIN
         WHERE C.COD_MEDIADOR = CT.COD_MEDIADOR_CEDENTE
         AND C.COD_SUBCLAVE = CT.SUBCLAVE_CEDENTE
         AND C.RAMO = cRamo
-        AND C.ACTIVO = 1
+        AND C.ACTIVO > 0
         AND C.NUM_POLIZA = CT.NUM_POLIZA
         ORDER BY C.NUM_POLIZA,C.NUM_ANUALIDAD;
         
@@ -233,7 +233,7 @@ BEGIN
     WHERE COD_MEDIADOR = :v_codMediadorCedente
     AND COD_SUBCLAVE = :v_subClaveMediadorCedente
     AND RAMO = cRamo
-    AND ACTIVO = 1
+    AND ACTIVO > 0
     AND NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId)
     ;
 	
@@ -245,3 +245,32 @@ BEGIN
 END;
 
 
+DO BEGIN 
+
+DECLARE vRAMO VARCHAR(50) = 'CREDITO';
+DECLARE vCASEID BIGINT = 1880;
+
+TRUNCATE TABLE EXT.CARTERA;
+INSERT INTO EXT.CARTERA SELECT * FROM EXT.CARTERA_BKP_04022025 ;
+DELETE FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%' AND DATETIME > '2025-03-07 10:00:00';
+
+SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,FECHA_INICIO,FECHA_FIN FROM EXT.CARTERA WHERE COD_MEDIADOR = '0044' AND COD_SUBCLAVE = '0003' AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_AVAL_HOST;
+
+	
+CALL EXT.SP_TRASPASO_MEDIADOR_MEDIADOR_CON_DERECHOS_CREDITO(1880,'Traspaso Pólizas y Avales-GM-335');
+
+SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE,MODIF_USER 
+FROM EXT.CARTERA 
+WHERE ( MODIF_USER LIKE '%1880%') AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_AVAL_HOST,NUM_POLIZA;
+
+SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,FECHA_INICIO,FECHA_FIN,MODIF_USER FROM EXT.CARTERA WHERE COD_MEDIADOR = '0044' AND COD_SUBCLAVE = '0003' AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_POLIZA,NUM_AVAL_HOST;
+
+-- SELECT ACTIVO,IDPAIS,IDPRODUCT,NUM_POLIZA,NUM_AVAL_HOST,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO,FECHA_FIN,MODIF_SOURCE,MODIF_DATE,MODIF_USER 
+-- FROM EXT.CARTERA 
+-- WHERE ((COD_MEDIADOR IN('3071') ) OR MODIF_SOURCE = 'Traspaso Pólizas y Avales-GM-335') AND RAMO = vRAMO ORDER BY ACTIVO,COD_MEDIADOR,NUM_AVAL_HOST,NUM_POLIZA;
+
+
+
+SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO LIKE '%sp_traspaso_mediador_mediador_con_derechos_credito%' AND DATETIME > '2025-03-07 10:00:00';
+
+END;
