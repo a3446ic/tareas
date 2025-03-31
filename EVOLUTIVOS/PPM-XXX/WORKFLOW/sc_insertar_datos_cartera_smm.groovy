@@ -209,7 +209,7 @@ def traspasoOperacionesEspecialesAmbos(idCasoOrigen, nombreCasoOrigen) {
 def traspasoModificarRelacionIntermediacionCredito(idCasoOrigen, nombreCasoOrigen) {
     
     logger.info('RELACIÓN INTERMEDIACIÓN - CREDITO');
-    //executeQuery("""CALL EXT.sp_traspaso_operaciones_especiales_credito($idCasoOrigen,'$nombreCasoOrigen')""");
+    executeQuery("""CALL EXT.SP_TRASPASO_MODIFICAR_RELACION_INTERMEDIACION_CREDITO($idCasoOrigen,'$nombreCasoOrigen')""");
             
 }
 
@@ -217,17 +217,17 @@ def traspasoModificarRelacionIntermediacionCredito(idCasoOrigen, nombreCasoOrige
 def traspasoModificarRelacionIntermediacionCaucion(idCasoOrigen, nombreCasoOrigen) {
     
     logger.info('RELACIÓN INTERMEDIACIÓN - CAUCION');
-    //executeQuery("""CALL EXT.sp_traspaso_operaciones_especiales_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+    executeQuery("""CALL EXT.SP_TRASPASO_MODIFICAR_RELACION_INTERMEDIACION_CAUCION($idCasoOrigen,'$nombreCasoOrigen')""");
 }
 
 //TRASPASO RELACIÓN INTERMEDIACIÓN AMBOS
 def traspasoModificarRelacionIntermediacionAmbos(idCasoOrigen, nombreCasoOrigen) {
     
     logger.info('RELACIÓN INTERMEDIACIÓN - CREDITO');
-    //executeQuery("""CALL EXT.sp_traspaso_operaciones_especiales_credito($idCasoOrigen,'$nombreCasoOrigen')""");
+    executeQuery("""CALL EXT.SP_TRASPASO_MODIFICAR_RELACION_INTERMEDIACION_CREDITO($idCasoOrigen,'$nombreCasoOrigen')""");
 
     logger.info('RELACIÓN INTERMEDIACIÓN - CAUCION');
-    //executeQuery("""CALL EXT.sp_traspaso_operaciones_especiales_caucion($idCasoOrigen,'$nombreCasoOrigen')""");  
+    executeQuery("""CALL EXT.SP_TRASPASO_MODIFICAR_RELACION_INTERMEDIACION_CAUCION($idCasoOrigen,'$nombreCasoOrigen')""");
     
 }
 
@@ -366,18 +366,18 @@ switch(tipoMovimiento) {
 
     case 'modificar_relacin_intermediacin':
         logger.info('MODIFICAR RELACIÓN INTERMEDIACIÓN');   
-        /*
+        
         switch(ramo) {
             case 'credito':
-                traspasoCredito(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
+                traspasoModificarRelacionIntermediacionCredito(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
                 break;
             case 'caucion':
-                traspasoCaucion(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
+                traspasoModificarRelacionIntermediacionCaucion(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
                 break;
             case 'ambos':
-                traspasoAmbos(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
+                traspasoModificarRelacionIntermediacionAmbos(derechosObligaciones, idCasoOrigen, nombreCasoOrigen);
                 break;
-        }*/
+        }
         break;
 
     case 'traspaso_entre_subclaves':
