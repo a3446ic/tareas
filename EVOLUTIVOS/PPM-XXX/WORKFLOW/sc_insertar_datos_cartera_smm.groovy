@@ -395,3 +395,13 @@ switch(tipoMovimiento) {
         }
         break;
 }
+
+// Se ejecuta el procedimiento almacenado que genera la peticion de cambio de cartera
+// Los datos que genera se utilizan en la tarea planificada que hace la llamada al web service de traspasos
+//def caseId = currentCase.getId()?.toString();
+
+def db = resp.dbConnect('datasource.CESCEdb');
+queryGenpetTraspaso = "CALL EXT.GENPET_TRASPASO ('" + idCasoOrigen + "')";
+db.execute(queryGenpetTraspaso);
+logger.info('Ejecutado el procedimiento EXT.GENPET_TRASPASO.');
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
