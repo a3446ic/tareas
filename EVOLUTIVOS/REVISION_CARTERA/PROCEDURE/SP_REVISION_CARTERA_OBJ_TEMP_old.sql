@@ -9,8 +9,7 @@ CREATE OR REPLACE PROCEDURE EXT.SP_REVISION_CARTERA_OBJ_TEMP LANGUAGE SQLSCRIPT 
 	| Procedure Purpose: REVISIÓN CARTERA
 	| 
 	| Version: 1	
-	| Version: 2. Añadidos los campos FECHA_INICIO_OPESP y FECHA_FIN_OPESP.
-    | Versión: 3. Cálculos en tablas temporales
+	| Version: 2. Añadidos los campos FECHA_INICIO_OPESP y FECHA_FIN_OPESP. 
     | ¡¡¡¡ ATENCIÓN !!!! FALTA AÑADIR LOS CAMPOS DE FECHAS OPESP EN PRODUCCIÓN
 	| 
 	|
@@ -122,8 +121,6 @@ BEGIN
     DECLARE caso44 varchar(100) := 'CASO 4.4 >>> 1 POLIZA - 1 MEDIADOR -> DISTINTO MEDIADOR';
     DECLARE caso45 varchar(100) := 'CASO 4.5 >>> 1 POLIZA - 1 MEDIADOR -> MISMO MEDIADOR';
 
-    
-
     ----------------------------- HANDLER EXCEPTION -------------------------
 	DECLARE EXIT HANDLER FOR SQLEXCEPTION
 	BEGIN
@@ -200,33 +197,51 @@ BEGIN
     END IF;
 
     TRUNCATE TABLE EXT.CARTERA_OBJ_TEMP;
+
+    -----------------------------------------------------------------------------------------
+    /****************************  POLIZAS CRÉDITO *****************************************/
+    -----------------------------------------------------------------------------------------
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Tratamiento POLIZAS CRÉDITO', CReport, io_contador);
+
+
+          
+    -----------------------------------------------------------------------------------------
+    -- CASO 1 POLIZA CREDITO, UN SOLO MEDIADOR SIN TRASPASOS
+    -----------------------------------------------------------------------------------------
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso1 , CReport, io_contador);
     
-    --INICIALIZAR TABLAS TEMPORALES 
-    --Ranking para cada combinación relevante
-    CTE_RANK =
-	    SELECT
-	        NUM_POLIZA,
-	        COD_MEDIADOR,
-	        COD_SUBCLAVE,
-	        NUM_ANUALIDAD,
-	        RAMO,
-	        DENSE_RANK() OVER (PARTITION BY NUM_POLIZA ORDER BY NUM_POLIZA, COD_MEDIADOR, COD_SUBCLAVE) AS RN
-	    FROM EXT.CARTERA_BKP_SMM;
-	    
-	-- CTE: FECHAS INICIO y FIN desde RELASUJE
-	CTE_RELASUJE =
-	    SELECT
-	        R.NUM_POLIZA,
-	        R.POSITIONNAME,
-	        R.MOD,
-	        MAX(IFNULL(FEC_INI, '1990-12-31')) AS MAX_FEC_INI,
-	        MAX(IFNULL(FEC_FIN, '2200-01-01')) AS MAX_FEC_FIN
-	    FROM EXT.RELASUJE R
-	    WHERE R.POSITIONNAME IS NOT NULL
-	    GROUP BY R.NUM_POLIZA, R.POSITIONNAME, R.MOD;
-	 
-	--CASOS TIPO 1   
-	CTE_MODIF_CASE_1 = SELECT C.NUM_POLIZA,
+
+    INSERT INTO EXT.CARTERA_OBJ_TEMP
+    SELECT DISTINCT CT.*
+    , NULL --FECHA_INICIO_OPESP
+    , NULL --FECHA_FIN_OPESP
+    ,C2.MODIF_CASE
+    , CASE
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+        	) THEN (
+		 		SELECT CASE WHEN MAX(FEC_INI) IS NULL OR MAX(FEC_INI) = '0000-00-00' THEN '1990-12-31'ELSE MAX(FEC_INI) END FROM EXT.RELASUJE R
+		 		WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+		 	)
+		 	ELSE CT.FECHA_INICIO
+      END FECHA_INICIO_TEMP
+    , CASE 
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+        	) THEN (
+		 		SELECT CASE WHEN MAX(FEC_FIN) IS NULL OR MAX(FEC_FIN) = '0000-00-00' THEN '2200-01-01'ELSE MAX(FEC_FIN) END FROM EXT.RELASUJE R
+		 		WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+		 	)
+		 	ELSE CT.FECHA_FIN
+      END FECHA_FIN_TEMP
+    FROM EXT.CARTERA_BKP_SMM CT INNER JOIN (
+        SELECT C.NUM_POLIZA,
         CASE
         --COMPRUEBA QUE EXISTE PÓLIZA EN RELASUJE
             WHEN NOT EXISTS (
@@ -277,11 +292,79 @@ BEGIN
         FROM EXT.CARTERA_BKP_SMM C
         WHERE C.RAMO = 'CREDITO'
         GROUP BY C.NUM_POLIZA
-        HAVING COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) = 1;
-        
-        
-    --CASOS TIPO2
-    CTE_MODIF_CASE_2 = SELECT C.NUM_POLIZA,
+        HAVING COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) = 1
+    ) C2 ON CT.NUM_POLIZA = C2.NUM_POLIZA
+    LEFT JOIN EXT.RELASUJE R ON LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA
+    WHERE CT.RAMO = 'CREDITO'
+    ;	
+
+    ---------------------------------------------------------------------------------------------------
+    -- Obtener registros insertados para debug
+    ---------------------------------------------------------------------------------------------------
+    SELECT SUM(CASE WHEN MODIF_CASE = caso10 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso11 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso12 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso13 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso14 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso15 THEN 1 ELSE 0 END)
+    INTO cantRegistros10, cantRegistros11, cantRegistros12, cantRegistros13, cantRegistros14, cantRegistros15
+    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
+
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas10 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso10;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas11 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso11;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas12 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso12;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas13 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso13;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas14 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso14;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas15 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso15;
+
+    
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso10 || '   ' || cantPolizas10 || ' Pólizas - Insertados ' || cantRegistros10 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso11 || '   ' || cantPolizas11 || ' Pólizas - Insertados ' || cantRegistros11 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso12 || '   ' || cantPolizas12 || ' Pólizas - Insertados ' || cantRegistros12 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso13 || '   ' || cantPolizas13 || ' Pólizas - Insertados ' || cantRegistros13 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso14 || '   ' || cantPolizas14 || ' Pólizas - Insertados ' || cantRegistros14 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso15 || '   ' || cantPolizas15 || ' Pólizas - Insertados ' || cantRegistros15 || ' registros', cReport, io_contador);
+    ---------------------------------------------------------------------------------------------------
+    
+
+	
+    --------------------------------------------------------------------------------------------
+    -- Caso 2 POLIZA CREDITO, N MEDIADORES SIN TRASPASOS
+    --------------------------------------------------------------------------------------------
+
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso2 , CReport, io_contador);
+    
+
+    INSERT INTO EXT.CARTERA_OBJ_TEMP
+    SELECT DISTINCT CT.*
+    , NULL --FECHA_INICIO_OPESP
+    , NULL --FECHA_FIN_OPESP
+    ,C2.MODIF_CASE
+    , CASE
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+        	) THEN (
+		 		 SELECT CASE WHEN MAX(FEC_INI) IS NULL OR MAX(FEC_INI) = '0000-00-00' THEN '1990-12-31'ELSE MAX(FEC_INI) END
+                 FROM EXT.RELASUJE R
+		 		 WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                 AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+		 	)
+		 	ELSE CT.FECHA_INICIO
+      END FECHA_INICIO_TEMP
+    , CASE
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+        	) THEN (
+		 		SELECT CASE WHEN MAX(FEC_FIN) IS NULL OR MAX(FEC_FIN) = '0000-00-00' THEN '2200-01-01'ELSE MAX(FEC_FIN) END FROM EXT.RELASUJE R
+		 		WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+		 	)
+		 	ELSE CT.FECHA_FIN
+      END FECHA_FIN_TEMP
+    FROM EXT.CARTERA_BKP_SMM CT INNER JOIN (
+        SELECT C.NUM_POLIZA,
         CASE
         --COMPRUEBA QUE EXISTE PÓLIZA EN RELASUJE
             WHEN NOT EXISTS (
@@ -333,10 +416,86 @@ BEGIN
         WHERE C.RAMO = 'CREDITO'
         GROUP BY C.NUM_POLIZA
         HAVING (COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) > 1 AND COUNT(DISTINCT C.ACTIVO) = 1) OR (COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) > 1 AND COUNT(DISTINCT C.ACTIVO) > 1)
-		;
-		
-	--CASOS TIPO3
-    CTE_MODIF_CASE_3 = SELECT C.NUM_POLIZA,
+    ) C2 ON CT.NUM_POLIZA = C2.NUM_POLIZA
+    LEFT JOIN EXT.RELASUJE R ON LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA
+    WHERE CT.RAMO = 'CREDITO'
+    AND NOT EXISTS (
+      SELECT 1 
+      FROM EXT.CARTERA_BKP_SMM C_SUB
+      WHERE C_SUB.NUM_POLIZA = CT.NUM_POLIZA
+        AND C_SUB.ACTIVO = 2
+  )
+    ;	
+
+    ---------------------------------------------------------------------------------------------------
+    -- Obtener registros insertados para debug
+    ---------------------------------------------------------------------------------------------------
+    SELECT SUM(CASE WHEN MODIF_CASE = caso20 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso21 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso22 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso23 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso24 THEN 1 ELSE 0 END)
+    , SUM(CASE WHEN MODIF_CASE = caso25 THEN 1 ELSE 0 END)   
+    INTO cantRegistros20, cantRegistros21, cantRegistros22, cantRegistros23, cantRegistros24, cantRegistros25
+    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
+
+    
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas20 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso20;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas21 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso21;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas22 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso22;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas23 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso23;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas24 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso24;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas25 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso25;
+
+    
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso20 || '   ' || cantPolizas20 || ' Pólizas - Insertados ' || cantRegistros20 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso21 || '   ' || cantPolizas21 || ' Pólizas - Insertados ' || cantRegistros21 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso22 || '   ' || cantPolizas22 || ' Pólizas - Insertados ' || cantRegistros22 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso23 || '   ' || cantPolizas23 || ' Pólizas - Insertados ' || cantRegistros23 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso24 || '   ' || cantPolizas24 || ' Pólizas - Insertados ' || cantRegistros24 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso25 || '   ' || cantPolizas25 || ' Pólizas - Insertados ' || cantRegistros25 || ' registros', cReport, io_contador);
+    ---------------------------------------------------------------------------------------------------
+
+    
+
+    -- --------------------------------------------------------------------------------------------
+    -- -- Caso 3 POLIZA CREDITO, N MEDIADORES CON TRASPASOS
+    -- --------------------------------------------------------------------------------------------
+
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso3 , CReport, io_contador);
+    
+
+    INSERT INTO EXT.CARTERA_OBJ_TEMP
+    SELECT DISTINCT CT.*
+    , NULL --FECHA_INICIO_OPESP
+    , NULL --FECHA_FIN_OPESP
+    ,C2.MODIF_CASE
+    , CASE
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD
+        	) THEN (
+		 		  SELECT CASE WHEN MAX(FEC_INI) IS NULL OR MAX(FEC_INI) = '0000-00-00' THEN '1990-12-31'ELSE MAX(FEC_INI) END
+                  FROM EXT.RELASUJE R
+		 		  WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+                  AND LPAD(CT.IDMODALIDAD,3,0) = R.MOD                
+		 	)
+		 	ELSE CT.FECHA_INICIO
+      END FECHA_INICIO_TEMP
+    , CASE   
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+        	) THEN (
+		 		 SELECT CASE WHEN MAX(FEC_FIN) IS NULL OR MAX(FEC_FIN) = '0000-00-00' THEN '2200-01-01'ELSE MAX(FEC_FIN) END FROM EXT.RELASUJE R
+		 		 WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME                
+		 	)
+		 	ELSE CT.FECHA_FIN
+      END FECHA_FIN_TEMP    
+    
+    FROM EXT.CARTERA_BKP_SMM CT INNER JOIN (
+        SELECT C.NUM_POLIZA,
         CASE
         --COMPRUEBA QUE EXISTE PÓLIZA EN RELASUJE
             WHEN NOT EXISTS (
@@ -388,10 +547,82 @@ BEGIN
         WHERE C.RAMO = 'CREDITO'
         GROUP BY C.NUM_POLIZA
         HAVING COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) > 1 AND COUNT(DISTINCT C.ACTIVO) > 1
-    ;
+    ) C2 ON CT.NUM_POLIZA = C2.NUM_POLIZA
+    WHERE CT.RAMO = 'CREDITO'
+    AND EXISTS (
+      SELECT 1 
+      FROM EXT.CARTERA_BKP_SMM C_SUB
+      WHERE C_SUB.NUM_POLIZA = CT.NUM_POLIZA
+        AND C_SUB.ACTIVO = 2
+  )
+    ;	
+
     
-    --CASOS TIPO4
-    CTE_MODIF_CASE_4 = SELECT C.NUM_POLIZA,
+    ---------------------------------------------------------------------------------------------------
+    -- Obtener registros insertados para debug
+    ---------------------------------------------------------------------------------------------------
+    SELECT SUM(CASE WHEN MODIF_CASE = caso30 THEN 1 ELSE 0 END)
+     , SUM(CASE WHEN MODIF_CASE = caso31 THEN 1 ELSE 0 END)
+     , SUM(CASE WHEN MODIF_CASE = caso32 THEN 1 ELSE 0 END)
+     , SUM(CASE WHEN MODIF_CASE = caso33 THEN 1 ELSE 0 END)
+     , SUM(CASE WHEN MODIF_CASE = caso34 THEN 1 ELSE 0 END)
+     , SUM(CASE WHEN MODIF_CASE = caso35 THEN 1 ELSE 0 END)
+    INTO cantRegistros30, cantRegistros31, cantRegistros32, cantRegistros33, cantRegistros34, cantRegistros35
+    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
+
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas30 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso30;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas31 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso31;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas32 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso32;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas33 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso33;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas34 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso34;
+    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas35 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso35;
+
+    
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso30 || '   ' || cantPolizas30 || ' Pólizas - Insertados ' || cantRegistros30 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso31 || '   ' || cantPolizas31 || ' Pólizas - Insertados ' || cantRegistros31 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso32 || '   ' || cantPolizas32 || ' Pólizas - Insertados ' || cantRegistros32 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso33 || '   ' || cantPolizas33 || ' Pólizas - Insertados ' || cantRegistros33 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso34 || '   ' || cantPolizas34 || ' Pólizas - Insertados ' || cantRegistros34 || ' registros', cReport, io_contador);
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso35 || '   ' || cantPolizas35 || ' Pólizas - Insertados ' || cantRegistros35 || ' registros', cReport, io_contador);
+    ---------------------------------------------------------------------------------------------------
+
+    -----------------------------------------------------------------------------------------
+    /****************************  POLIZAS CAUCIÓN *****************************************/
+    -----------------------------------------------------------------------------------------
+	
+	-----------------------------------------------------------------------------------------
+    -- CASO 4 POLIZA CAUCIÓN, UN SOLO MEDIADOR SIN TRASPASOS
+    -----------------------------------------------------------------------------------------
+    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso4 , CReport, io_contador);
+    
+
+    INSERT INTO EXT.CARTERA_OBJ_TEMP
+    SELECT DISTINCT CT.*
+    , NULL --FECHA_INICIO_OPESP
+    , NULL --FECHA_FIN_OPESP
+    ,C2.MODIF_CASE
+    , CASE
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+        	) THEN (
+		 		SELECT CASE WHEN MAX(FEC_INI) IS NULL OR MAX(FEC_INI) = '0000-00-00' THEN '1990-12-31'ELSE MAX(FEC_INI) END FROM EXT.RELASUJE R
+		 		WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+		 	)
+		 	ELSE CT.FECHA_INICIO
+      END FECHA_INICIO_TEMP
+    , CASE 
+		WHEN EXISTS(
+        		SELECT 1 FROM EXT.RELASUJE R
+				WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+        	) THEN (
+		 		SELECT CASE WHEN MAX(FEC_FIN) IS NULL OR MAX(FEC_FIN) = '0000-00-00' THEN '2200-01-01'ELSE MAX(FEC_FIN) END FROM EXT.RELASUJE R
+		 		WHERE LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA AND R.POSITIONNAME IS NOT NULL AND CT.COD_MEDIADOR||'-'||CT.COD_SUBCLAVE = R.POSITIONNAME
+		 	)
+		 	ELSE CT.FECHA_FIN
+      END FECHA_FIN_TEMP
+    FROM EXT.CARTERA_BKP_SMM CT INNER JOIN (
+        SELECT C.NUM_POLIZA,
         CASE
         --COMPRUEBA QUE EXISTE PÓLIZA EN RELASUJE
             WHEN NOT EXISTS (
@@ -450,294 +681,12 @@ BEGIN
         WHERE C.RAMO = 'CAUCION'
         GROUP BY C.NUM_POLIZA
         HAVING COUNT(DISTINCT C.COD_MEDIADOR||'-'||C.COD_SUBCLAVE) = 1
-        ;
-    -----------------------------------------------------------------------------------------
-    /****************************  POLIZAS CRÉDITO *****************************************/
-    -----------------------------------------------------------------------------------------
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'Tratamiento POLIZAS CRÉDITO', CReport, io_contador);
-
-
-          
-    -----------------------------------------------------------------------------------------
-    -- CASO 1 POLIZA CREDITO, UN SOLO MEDIADOR SIN TRASPASOS
-    -----------------------------------------------------------------------------------------
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso1 , CReport, io_contador);
-    
-    INSERT INTO EXT.CARTERA_OBJ_TEMP
-    SELECT DISTINCT CT.*
-    , NULL --FECHA_INICIO_OPESP
-    , NULL --FECHA_FIN_OPESP
-    ,CMC1.MODIF_CASE
-    -- FECHA_INICIO_TEMP
-	    ,COALESCE(RJ.MAX_FEC_INI,'1990-12-31') AS FECHA_INICIO_TEMP,
-	    -- FECHA_FIN_TEMP
-	    COALESCE(RJ.MAX_FEC_FIN,'2200-01-01') AS FECHA_FIN_TEMP
-    FROM EXT.CARTERA_BKP_SMM CT
-    INNER JOIN :CTE_MODIF_CASE_1 CMC1 ON CT.NUM_POLIZA = CMC1.NUM_POLIZA
-    LEFT JOIN :CTE_RELASUJE RJ ON LPAD(CT.NUM_POLIZA,8,0) = RJ.NUM_POLIZA 
-	    AND RJ.POSITIONNAME = CT.COD_MEDIADOR || '-' || CT.COD_SUBCLAVE 
-	    AND RJ.MOD = LPAD(CT.IDMODALIDAD,3,0)
-    LEFT JOIN :CTE_RANK CR ON CT.NUM_POLIZA = CR.NUM_POLIZA 
-	    AND CT.COD_MEDIADOR = CR.COD_MEDIADOR 
-	    AND CT.COD_SUBCLAVE = CR.COD_SUBCLAVE 
-	    AND CT.RAMO = CR.RAMO 
-	    AND CT.NUM_ANUALIDAD = CR.NUM_ANUALIDAD
-    WHERE CT.RAMO = 'CREDITO'
-    ;
-    
-    ---------------------------------------------------------------------------------------------------
-    -- Obtener registros insertados para debug
-    ---------------------------------------------------------------------------------------------------
-    SELECT SUM(CASE WHEN MODIF_CASE = caso10 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso11 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso12 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso13 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso14 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso15 THEN 1 ELSE 0 END)
-    INTO cantRegistros10, cantRegistros11, cantRegistros12, cantRegistros13, cantRegistros14, cantRegistros15
-    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
-
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas10 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso10;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas11 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso11;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas12 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso12;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas13 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso13;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas14 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso14;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas15 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso15;
-
-    
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso10 || '   ' || cantPolizas10 || ' Pólizas - Insertados ' || cantRegistros10 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso11 || '   ' || cantPolizas11 || ' Pólizas - Insertados ' || cantRegistros11 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso12 || '   ' || cantPolizas12 || ' Pólizas - Insertados ' || cantRegistros12 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso13 || '   ' || cantPolizas13 || ' Pólizas - Insertados ' || cantRegistros13 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso14 || '   ' || cantPolizas14 || ' Pólizas - Insertados ' || cantRegistros14 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso15 || '   ' || cantPolizas15 || ' Pólizas - Insertados ' || cantRegistros15 || ' registros', cReport, io_contador);
-    ---------------------------------------------------------------------------------------------------
-    
-
-	
-    --------------------------------------------------------------------------------------------
-    -- Caso 2 POLIZA CREDITO, N MEDIADORES SIN TRASPASOS
-    --------------------------------------------------------------------------------------------
-
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso2 , CReport, io_contador);
-    
-    INSERT INTO EXT.CARTERA_OBJ_TEMP
-    SELECT DISTINCT CT.*
-    , NULL --FECHA_INICIO_OPESP
-    , NULL --FECHA_FIN_OPESP
-    ,CMC2.MODIF_CASE
-    -- FECHA_INICIO_TEMP
-	,COALESCE(RJ.MAX_FEC_INI, 
-	        CASE
-	            WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	                THEN (SELECT MIN(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	                THEN (SELECT MAX(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            ELSE '1990-12-31'
-	        END
-	    ) AS FECHA_INICIO_TEMP,
-	
-	    -- FECHA_FIN_TEMP
-	    COALESCE(RJ.MAX_FEC_FIN, 
-	        CASE
-	            WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	                THEN (SELECT MAX(FECHA_VENCIMIENTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	                THEN '2200-01-01'
-	            ELSE '2200-01-01'
-	        END
-	    ) AS FECHA_FIN_TEMP
-    FROM EXT.CARTERA_BKP_SMM CT
-    INNER JOIN :CTE_MODIF_CASE_2 CMC2 ON CT.NUM_POLIZA = CMC2.NUM_POLIZA
-    LEFT JOIN :CTE_RELASUJE RJ ON LPAD(CT.NUM_POLIZA,8,0) = RJ.NUM_POLIZA 
-	    AND RJ.POSITIONNAME = CT.COD_MEDIADOR || '-' || CT.COD_SUBCLAVE 
-	    AND RJ.MOD = LPAD(CT.IDMODALIDAD,3,0)
-    LEFT JOIN :CTE_RANK CR ON CT.NUM_POLIZA = CR.NUM_POLIZA 
-	    AND CT.COD_MEDIADOR = CR.COD_MEDIADOR 
-	    AND CT.COD_SUBCLAVE = CR.COD_SUBCLAVE 
-	    AND CT.RAMO = CR.RAMO 
-	    AND CT.NUM_ANUALIDAD = CR.NUM_ANUALIDAD
-    WHERE CT.RAMO = 'CREDITO'
-    AND NOT EXISTS (
-      SELECT 1 
-      FROM EXT.CARTERA_BKP_SMM C_SUB
-      WHERE C_SUB.NUM_POLIZA = CT.NUM_POLIZA
-        AND C_SUB.ACTIVO = 2
-  )
-    ;
-
-
----------------------------------------------------------------------------------------------------
-    -- Obtener registros insertados para debug
-    ---------------------------------------------------------------------------------------------------
-    SELECT SUM(CASE WHEN MODIF_CASE = caso20 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso21 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso22 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso23 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso24 THEN 1 ELSE 0 END)
-    , SUM(CASE WHEN MODIF_CASE = caso25 THEN 1 ELSE 0 END)   
-    INTO cantRegistros20, cantRegistros21, cantRegistros22, cantRegistros23, cantRegistros24, cantRegistros25
-    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
-
-    
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas20 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso20;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas21 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso21;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas22 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso22;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas23 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso23;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas24 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso24;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas25 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso25;
-
-    
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso20 || '   ' || cantPolizas20 || ' Pólizas - Insertados ' || cantRegistros20 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso21 || '   ' || cantPolizas21 || ' Pólizas - Insertados ' || cantRegistros21 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso22 || '   ' || cantPolizas22 || ' Pólizas - Insertados ' || cantRegistros22 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso23 || '   ' || cantPolizas23 || ' Pólizas - Insertados ' || cantRegistros23 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso24 || '   ' || cantPolizas24 || ' Pólizas - Insertados ' || cantRegistros24 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso25 || '   ' || cantPolizas25 || ' Pólizas - Insertados ' || cantRegistros25 || ' registros', cReport, io_contador);
-    ---------------------------------------------------------------------------------------------------
-
-    
-
-    -- --------------------------------------------------------------------------------------------
-    -- -- Caso 3 POLIZA CREDITO, N MEDIADORES CON TRASPASOS
-    -- --------------------------------------------------------------------------------------------
-
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso3 , CReport, io_contador);
-    
-    INSERT INTO EXT.CARTERA_OBJ_TEMP
-    SELECT DISTINCT CT.*
-    , NULL --FECHA_INICIO_OPESP
-    , NULL --FECHA_FIN_OPESP
-    ,CMC3.MODIF_CASE
-    -- FECHA_INICIO_TEMP
-	,COALESCE(RJ.MAX_FEC_INI, 
-	        CASE
-	            WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	                THEN (SELECT MIN(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	                THEN (SELECT MAX(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            ELSE '1990-12-31'
-	        END
-	    ) AS FECHA_INICIO_TEMP,
-	
-	    -- FECHA_FIN_TEMP
-	    COALESCE(RJ.MAX_FEC_FIN, 
-	        CASE
-	            WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	                THEN (SELECT MAX(FECHA_VENCIMIENTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	            WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	                THEN '2200-01-01'
-	            ELSE '2200-01-01'
-	        END
-	    ) AS FECHA_FIN_TEMP
-    FROM EXT.CARTERA_BKP_SMM CT
-    INNER JOIN :CTE_MODIF_CASE_3 CMC3 ON CT.NUM_POLIZA = CMC3.NUM_POLIZA
-    LEFT JOIN :CTE_RELASUJE RJ ON LPAD(CT.NUM_POLIZA,8,0) = RJ.NUM_POLIZA 
-	    AND RJ.POSITIONNAME = CT.COD_MEDIADOR || '-' || CT.COD_SUBCLAVE 
-	    AND RJ.MOD = LPAD(CT.IDMODALIDAD,3,0)
-    LEFT JOIN :CTE_RANK CR ON CT.NUM_POLIZA = CR.NUM_POLIZA 
-	    AND CT.COD_MEDIADOR = CR.COD_MEDIADOR 
-	    AND CT.COD_SUBCLAVE = CR.COD_SUBCLAVE 
-	    AND CT.RAMO = CR.RAMO 
-	    AND CT.NUM_ANUALIDAD = CR.NUM_ANUALIDAD
-    WHERE CT.RAMO = 'CREDITO'
-    AND NOT EXISTS (
-      SELECT 1 
-      FROM EXT.CARTERA_BKP_SMM C_SUB
-      WHERE C_SUB.NUM_POLIZA = CT.NUM_POLIZA
-        AND C_SUB.ACTIVO = 2
-  )
-    ;
-    
-    
-    ---------------------------------------------------------------------------------------------------
-    -- Obtener registros insertados para debug
-    ---------------------------------------------------------------------------------------------------
-    SELECT SUM(CASE WHEN MODIF_CASE = caso30 THEN 1 ELSE 0 END)
-     , SUM(CASE WHEN MODIF_CASE = caso31 THEN 1 ELSE 0 END)
-     , SUM(CASE WHEN MODIF_CASE = caso32 THEN 1 ELSE 0 END)
-     , SUM(CASE WHEN MODIF_CASE = caso33 THEN 1 ELSE 0 END)
-     , SUM(CASE WHEN MODIF_CASE = caso34 THEN 1 ELSE 0 END)
-     , SUM(CASE WHEN MODIF_CASE = caso35 THEN 1 ELSE 0 END)
-    INTO cantRegistros30, cantRegistros31, cantRegistros32, cantRegistros33, cantRegistros34, cantRegistros35
-    FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO';
-
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas30 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso30;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas31 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso31;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas32 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso32;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas33 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso33;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas34 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso34;
-    SELECT COUNT(DISTINCT NUM_POLIZA) INTO cantPolizas35 FROM EXT.CARTERA_OBJ_TEMP WHERE RAMO = 'CREDITO' AND MODIF_CASE = caso35;
-
-    
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso30 || '   ' || cantPolizas30 || ' Pólizas - Insertados ' || cantRegistros30 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso31 || '   ' || cantPolizas31 || ' Pólizas - Insertados ' || cantRegistros31 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso32 || '   ' || cantPolizas32 || ' Pólizas - Insertados ' || cantRegistros32 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso33 || '   ' || cantPolizas33 || ' Pólizas - Insertados ' || cantRegistros33 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso34 || '   ' || cantPolizas34 || ' Pólizas - Insertados ' || cantRegistros34 || ' registros', cReport, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant,'     ' || caso35 || '   ' || cantPolizas35 || ' Pólizas - Insertados ' || cantRegistros35 || ' registros', cReport, io_contador);
-    ---------------------------------------------------------------------------------------------------
-
-    -----------------------------------------------------------------------------------------
-    /****************************  POLIZAS CAUCIÓN *****************************************/
-    -----------------------------------------------------------------------------------------
-	
-	-----------------------------------------------------------------------------------------
-    -- CASO 4 POLIZA CAUCIÓN, UN SOLO MEDIADOR SIN TRASPASOS
-    -----------------------------------------------------------------------------------------
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, caso4 , CReport, io_contador);
-    
-    
-    INSERT INTO EXT.CARTERA_OBJ_TEMP
-    SELECT DISTINCT CT.*
-    , NULL --FECHA_INICIO_OPESP
-    , NULL --FECHA_FIN_OPESP
-    ,CMC4.MODIF_CASE
-    -- FECHA_INICIO_TEMP
-	    ,COALESCE(RJ.MAX_FEC_INI,
-	    	CASE
-	    		WHEN RJ.POSITIONNAME IS NULL 
-	    			THEN CT.FECHA_EFECTO--(SELECT MIN(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	    		ELSE '1990-12-31'
-	    	END
-	    		
-	        -- CASE
-	        --     WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	        --         THEN (SELECT MIN(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	        --     WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA) 
-	        --         THEN (SELECT MAX(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	        --     ELSE '1990-12-31'
-	        -- END
-	    ) AS FECHA_INICIO_TEMP,
-	
-	    -- FECHA_FIN_TEMP
-	    COALESCE(RJ.MAX_FEC_FIN, 
-	    	CASE
-	    		WHEN RJ.POSITIONNAME IS NULL 
-	    			THEN CT.FECHA_EFECTO--(SELECT MIN(FECHA_EFECTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	    		ELSE '2200-01-01'
-	    	END
-	        -- CASE
-	        --     WHEN CR.RN = (SELECT MIN(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	        --         THEN (SELECT MAX(FECHA_VENCIMIENTO) FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = CT.NUM_POLIZA AND COD_MEDIADOR = CT.COD_MEDIADOR AND COD_SUBCLAVE = CT.COD_SUBCLAVE)
-	        --     WHEN CR.RN = (SELECT MAX(RN) FROM :CTE_RANK WHERE NUM_POLIZA = CT.NUM_POLIZA)
-	        --         THEN '2200-01-01'
-	        --     ELSE '2200-01-01'
-	        -- END
-	    ) AS FECHA_FIN_TEMP
-    FROM EXT.CARTERA_BKP_SMM CT 
-    INNER JOIN :CTE_MODIF_CASE_4 CMC4 ON CT.NUM_POLIZA = CMC4.NUM_POLIZA
-    LEFT JOIN :CTE_RELASUJE RJ ON LPAD(CT.NUM_POLIZA,8,0) = RJ.NUM_POLIZA 
-	    --AND RJ.POSITIONNAME = CT.COD_MEDIADOR || '-' || CT.COD_SUBCLAVE 
-	    --AND RJ.MOD = LPAD(CT.IDMODALIDAD,3,0)
-	LEFT JOIN :CTE_RANK CR ON CT.NUM_POLIZA = CR.NUM_POLIZA 
-	    AND CT.COD_MEDIADOR = CR.COD_MEDIADOR 
-	    AND CT.COD_SUBCLAVE = CR.COD_SUBCLAVE 
-	    AND CT.RAMO = CR.RAMO 
-	    AND CT.NUM_ANUALIDAD = CR.NUM_ANUALIDAD
+    ) C2 ON CT.NUM_POLIZA = C2.NUM_POLIZA
+    LEFT JOIN EXT.RELASUJE R ON LPAD(CT.NUM_POLIZA,8,0) = R.NUM_POLIZA
     WHERE CT.RAMO = 'CAUCION'
     ;		
-   ---------------------------------------------------------------------------------------------------
+
+    ---------------------------------------------------------------------------------------------------
     -- Obtener registros insertados para debug
     ---------------------------------------------------------------------------------------------------
     SELECT SUM(CASE WHEN MODIF_CASE = caso40 THEN 1 ELSE 0 END)
@@ -892,38 +841,11 @@ BEGIN
 	-- GROUP BY RAMO, NUM_POLIZA,IDMODALIDAD,NUM_EXPEDIENTE,IDPAIS,COD_MEDIADOR,COD_SUBCLAVE,P_INTERMEDIACION,FECHA_INICIO_TEMP,FECHA_FIN_TEMP,ACTIVO,MODIF_CASE;
 
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'EXPEDIENTE' || ' Insertados EXPEDIENTES ' || ::ROWCOUNT || ' registros', cReport, io_contador);
- 
-    
+	
     CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'FIN PROCEDIMIENTO ' || cVersion || ' with SESSION_USER '|| SESSION_USER, cReport, io_contador);
 END;
 
 DO BEGIN
 
-DELETE FROM EXT.CSE_DEBUG WHERE PROCESO = 'SP_REVISION_CARTERA_OBJ_TEMP' AND CAST(DATETIME AS DATE) = CURRENT_DATE ;
--- DELETE FROM EXT.CARTERA WHERE MODIF_USER = 'MANUAL-2';
-CALL EXT.SP_REVISION_CARTERA_OBJ_TEMP();
-
- --SELECT * FROM EXT.CARTERA_OBJ_TEMP WHERE NUM_POLIZA = 14616 ORDER BY FECHA_EFECTO,COD_MEDIADOR,NUM_ANUALIDAD;
- SELECT * FROM EXT.CARTERA_OBJ_TEMP 
- --WHERE NUM_POLIZA = 10012 
- WHERE 1=1
- --MODIF_CASE LIKE 'CASO 4.2%'
- AND NUM_POLIZA = 1011928
- ORDER BY NUM_POLIZA,COD_MEDIADOR,NUM_ANUALIDAD;
- 
---  SELECT IDPRODUCT
--- ,NUM_POLIZA,NUM_ANUALIDAD,COD_MEDIADOR,COD_SUBCLAVE,FECHA_EFECTO,FECHA_VENCIMIENTO,
--- 	FECHA_INICIO,FECHA_FIN,FECHA_INICIO_TEMP,FECHA_FIN_TEMP FROM EXT.CARTERA_OBJ_TEMP 
---  --WHERE NUM_POLIZA = 10012 
---  WHERE MODIF_CASE LIKE 'CASO 3.0%'
---  ORDER BY NUM_POLIZA,COD_MEDIADOR,NUM_ANUALIDAD;
- 
-  SELECT * FROM EXT.RELASUJE WHERE NUM_POLIZA = 1011928;
-  
-  SELECT * FROM EXT.CARTERA_BKP_SMM WHERE NUM_POLIZA = 1011928;
-
-SELECT * FROM EXT.CSE_DEBUG WHERE PROCESO = 'SP_REVISION_CARTERA_OBJ_TEMP' AND CAST(DATETIME AS DATE) = CURRENT_DATE ;
-
-
--- SELECT * FROM EXT.CARTERA WHERE MODIF_USER = 'MANUAL-2' AND COD_MEDIADOR = '0004';
+	SELECT * FROM EXT.CARTERA_OBJ_TEMP;
 END;
