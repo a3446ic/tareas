@@ -153,7 +153,7 @@ BEGIN
         END, --P_ESPECIAL_RENOVACION
         C."NIF_TOMADOR",
         C."NOMBRE_TOMADOR",
-        C."FECHA_EFECTO_TRASPASO",
+        v_fechaTraspaso,--C."FECHA_EFECTO_TRASPASO",
         C."MEDIADOR_PRINCIPAL_CIC",
         C."ACTIVO",
         CURRENT_TIMESTAMP,
@@ -226,6 +226,7 @@ BEGIN
     UPDATE EXT.CARTERA
     SET ACTIVO = 0,
         FECHA_FIN = ADD_DAYS(v_fechaTraspaso,-1),
+        FECHA_EFECTO_TRASPASO = v_fechaTraspaso,
         MODIF_USER = v_ModifUser,
         MODIF_SOURCE = nombreCasoOrigen,
         MODIF_DATE = CURRENT_TIMESTAMP

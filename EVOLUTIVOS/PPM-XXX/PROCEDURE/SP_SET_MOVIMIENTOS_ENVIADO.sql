@@ -13,9 +13,11 @@ BEGIN
 	-- v14: Si hay múltiples mediadores de traspaso se actualiza el registro con el nuevo mediador 
 	-- v14: Llamar al procedimiento EXT.GENPET_MVCARTERA 
 	-- v15: Campos FECHA_INICIO_OPESP y FECHA_FIN_OPESP en CARTERA
+	-- v16: Quitar llamada al procedimiento EXT.GENPET_MVCARTERA
+	-- v17: Llamada procedimientos EXT.GENPET_MVCARTERA y EXT_CREAR_EXPEDIENTE
 	-------------------------------------------------------------------------
 
-	DECLARE cVersion CONSTANT VARCHAR(2) := '15';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '17';
 	DECLARE i_Tenant VARCHAR2(127);
 	DECLARE vProcedure VARCHAR2(127);
 	DECLARE io_contador  INTEGER := 0;
@@ -88,7 +90,7 @@ BEGIN
 			-- En caso de que no haya registros anteriores, se ponen los valores del movimiento como "por defecto"
 			codigoMediador := i.IDMEDIADOR;
 			subclaveMediador := i.IDSUBCLAVE;
-			fechaInicio := i.FECHA_INI;
+			fechaInicio := COALESCE(i.FECHA_INI,'1990-12-31');
 			fechaFin := i.FECHA_FIN;
 			-------------------------------------------------------------------------------------------------------
 
@@ -368,7 +370,7 @@ BEGIN
 					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), i.NUM_POLIZA).productId FROM DUMMY);
 				END IF;
 				-------------------------------------------------------------------------------------------------------
-			SELECT registroExistente registroExistente FROM DUMMY;
+		
 				IF registroExistente >= 1 THEN --UPDATE
         
 					UPDATE EXT.CARTERA SET
@@ -434,7 +436,6 @@ BEGIN
 					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), i.NUM_POLIZA).productId FROM DUMMY)
 					ORDER BY FECHA_VENCIMIENTO DESC LIMIT  1; 
 
-SELECT 'TIPO3',especialEmision,especialRenovacion FROM DUMMY;
 
 					INSERT INTO EXT.CARTERA VALUES (
 						'CREDITO',
@@ -859,6 +860,9 @@ SELECT 'TIPO3',especialEmision,especialRenovacion FROM DUMMY;
     END IF;
 
 	CALL EXT.GENPET_MVCARTERA(IN_FILENAME);
+
+	--Creación de expedientes
+	CALL EXT.CREAR_EXPEDIENTE();
 
 	CALL LIB_GLOBAL_CESCE :w_debug (
     i_Tenant,
