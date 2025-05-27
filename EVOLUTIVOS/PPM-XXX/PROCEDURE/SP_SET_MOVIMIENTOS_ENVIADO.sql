@@ -15,9 +15,10 @@ BEGIN
 	-- v15: Campos FECHA_INICIO_OPESP y FECHA_FIN_OPESP en CARTERA
 	-- v16: Quitar llamada al procedimiento EXT.GENPET_MVCARTERA
 	-- v17: Llamada procedimientos EXT.GENPET_MVCARTERA y EXT_CREAR_EXPEDIENTE
+	-- v18: Control de errores al obtner más de un registro (de momento en tipoMov = 3)
 	-------------------------------------------------------------------------
 
-	DECLARE cVersion CONSTANT VARCHAR(2) := '17';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '18';
 	DECLARE i_Tenant VARCHAR2(127);
 	DECLARE vProcedure VARCHAR2(127);
 	DECLARE io_contador  INTEGER := 0;
@@ -323,16 +324,38 @@ BEGIN
 
                 IF i.IDTIPO_MOV = 3 THEN
 
-                    -- Se obtiene la fecha de vencimiento y de efecto ya existentes para, posteriormente, comparar cuál se ha acortado
-                    SELECT DISTINCT FECHA_VENCIMIENTO, FECHA_EFECTO INTO fechaVencimientoAnterior, fechaEfectoAnterior 
-                        DEFAULT i.FECHA_VENCIMIENTO, i.FECHA_EFECTO
-                    FROM EXT.CARTERA
-                    WHERE NUM_POLIZA = i.NUM_POLIZA 
-                    AND COD_MEDIADOR = i.IDMEDIADOR 
-                    AND COD_SUBCLAVE = i.IDSUBCLAVE
-                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), i.NUM_POLIZA).productId FROM DUMMY)
-                    AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
-                    AND FECHA_INICIO = i.FECHA_INI;
+					IF 	(SELECT COUNT(*)
+	                    FROM EXT.CARTERA
+	                    WHERE NUM_POLIZA = i.NUM_POLIZA 
+	                    AND COD_MEDIADOR = i.IDMEDIADOR 
+	                    AND COD_SUBCLAVE = i.IDSUBCLAVE
+	                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), i.NUM_POLIZA).productId FROM DUMMY)
+	                    AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
+	                    AND FECHA_INICIO = i.FECHA_INI) = 1 THEN 
+	                    -- Se obtiene la fecha de vencimiento y de efecto ya existentes para, posteriormente, comparar cuál se ha acortado
+		                    SELECT DISTINCT FECHA_VENCIMIENTO, FECHA_EFECTO INTO fechaVencimientoAnterior, fechaEfectoAnterior 
+		                        DEFAULT i.FECHA_VENCIMIENTO, i.FECHA_EFECTO
+		                    FROM EXT.CARTERA
+		                    WHERE NUM_POLIZA = i.NUM_POLIZA 
+		                    AND COD_MEDIADOR = i.IDMEDIADOR 
+		                    AND COD_SUBCLAVE = i.IDSUBCLAVE
+		                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), i.NUM_POLIZA).productId FROM DUMMY)
+		                    AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
+		                    AND FECHA_INICIO = i.FECHA_INI;
+		                ELSE 
+				        -- Manejo de error: asignar valor por defecto, loguear, etc.
+				        CALL LIB_GLOBAL_CESCE :w_debug (
+						    i_Tenant,
+						    'SQL_ERROR_MESSAGE: fetch returns more than requested number of rows:  SQL_ERROR_CODE: 1300 - NUM_POLIZA: '|| i.NUM_POLIZA 
+						    	|| ' IDMODALIDAD: ' || i.IDMODALIDAD || ' IDMEDIADOR: ' || i.IDMEDIADOR || ' IDSUBCLAVE: ' || i.IDSUBCLAVE,
+						    'SP_SET_MOVIMIENTOS_ENVIADO',
+						    io_contador
+						);
+						-- CONTINUE;
+						fechaVencimientoAnterior := i.FECHA_VENCIMIENTO;
+						fechaEfectoAnterior := i.FECHA_EFECTO;
+						
+				    END IF;
                     -------------------------------------------------------------------------------------------------------
 
                     -- Si se ha acortado la fecha de vencimiento, se modifican las fechas de inicio y efecto del traspaso (en caso de que lo hubiera)
@@ -871,4 +894,5 @@ BEGIN
     io_contador
 );
 
-END
+END;
+

@@ -70,7 +70,7 @@ def traspasoCredito(derechosObligaciones, idCasoOrigen, nombreCasoOrigen) {
         case 'sin_derechos_y_obligaciones_a_la_renovacin':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito($idCasoOrigen,'$nombreCasoOrigen')""");
-            break;
+            break;        
         case 'sin_derechos_y_obligaciones_al_inicio_de_la_anuali':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA ANUALIDAD ACTUAL - CREDITO');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_anualidad_actual_credito($idCasoOrigen,'$nombreCasoOrigen')""");
@@ -89,6 +89,10 @@ def traspasoCaucion(derechosObligaciones, idCasoOrigen, nombreCasoOrigen) {
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
             break;
+        case 'sin_derechos_y_obligaciones_caucion':
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
+            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            break;
     }
 }
 
@@ -102,6 +106,12 @@ def traspasoAmbos(derechosObligaciones, idCasoOrigen, nombreCasoOrigen) {
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_con_derechos_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
             break;
         case 'sin_derechos_y_obligaciones_a_la_renovacin':
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
+            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito($idCasoOrigen,'$nombreCasoOrigen')""");
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
+            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            break;
+        case 'sin_derechos_y_obligaciones_caucion':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
             executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_credito($idCasoOrigen,'$nombreCasoOrigen')""");
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
@@ -145,7 +155,11 @@ def traspasoPorcentajeCaucion(derechosObligaciones, idCasoOrigen, nombreCasoOrig
             break;
         case 'sin_derechos_y_obligaciones_a_la_renovacin':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
-            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            break;
+        case 'sin_derechos_y_obligaciones_caucion':
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
+            executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
             break;
     }
 }
@@ -163,7 +177,13 @@ def traspasoPorcentajeAmbos(derechosObligaciones, idCasoOrigen, nombreCasoOrigen
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
             executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_credito($idCasoOrigen,'$nombreCasoOrigen')""");
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
-            executeQuery("""CALL EXT.sp_traspaso_mediador_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
+            break;
+        case 'sin_derechos_y_obligaciones_caucion':
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CREDITO');
+            executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_credito($idCasoOrigen,'$nombreCasoOrigen')""");
+            logger.info('SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN - CAUCION');
+            executeQuery("""CALL EXT.sp_traspaso_porcentaje_mediador_sin_derechos_renovacion_caucion($idCasoOrigen,'$nombreCasoOrigen')""");
             break;
         case 'sin_derechos_y_obligaciones_al_inicio_de_la_anuali':
             logger.info('SIN DERECHOS Y OBLIGACIONES A LA ANUALIDAD ACTUAL - CREDITO');
