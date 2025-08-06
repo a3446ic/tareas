@@ -98,9 +98,9 @@ def enviarCorreo(def resultadoConsulta, def titulo) {
     logger.info(mensaje);
     
     def msg = resp.newMessage();
-    msg.addRecipient('alvaro.lailla@inycom.es') 
+    msg.addRecipient('samuel.miralles@inycom.es') 
     //msg.addRecipient(resp.getAppParam("helpdeskCESCE"))
-    msg.addCC(resp.getAppParam("soporteCESCE")) 
+    //msg.addCC(resp.getAppParam("soporteCESCE")) 
     msg.addCC("samuel.miralles@inycom.es") 
     msg.setSubject("SAP Commissions – Error ETL - $titulo")
     def bodyMail = ""; 
@@ -189,6 +189,12 @@ def consulta4 = """SELECT MOTIVO, IDMODALIDAD AS MODALIDAD, NUM_POLIZA "NUM POLI
 FECHA_INICIO "INICIO", FECHA_FIN "FIN", BATCHNAME "FICHERO CARGA" 
 FROM EXT.GET_POLIZAS_CAUCION_ERROR();""";
 
+//RESPUESTA FACTURAS
+def consulta5 = "SELECT MENSAJE, IDFACTURA, PROVEEDOR, REFERENCIA, BATCHNAME FROM EXT.GET_RESPUESTA_FACTURAS_ERROR();";
+
+//PAGO FACTURAS
+def consulta6 = "SELECT MENSAJE, IDFACTURA, PROVEEDOR, REFERENCIA, BATCHNAME FROM EXT.GET_PAGO_FACTURAS_ERROR();";
+
 def titulo = [];
 
 def resultadoConsulta1 = db.queryForList(consulta1);
@@ -220,6 +226,25 @@ if(resultadoConsulta4) {
 }
 
 def updateMVFID = db.execute("""UPDATE EXT.REGISTRO_INTERFACES SET NOTIFICATION = 1 WHERE NOTIFICATION = 0 AND BATCHNAME LIKE '%MVFID%'""");
+
+//RESPUESTA FACTURAS
+def resultadoConsulta5 = db.queryForList(consulta5);
+if(resultadoConsulta5) {
+    titulo = 'RESPUESTA FACTURAS';
+    enviarCorreo(resultadoConsulta5, titulo);
+}
+
+def updateRESPFAC = db.execute("""UPDATE EXT.REGISTRO_INTERFACES SET NOTIFICATION = 1 WHERE NOTIFICATION = 0 AND BATCHNAME LIKE '%RESPFAC%'""");
+
+//PAGO FACTURAS
+def resultadoConsulta6 = db.queryForList(consulta6);
+if(resultadoConsulta6) {
+    titulo = 'PAGO FACTURAS';
+    enviarCorreo(resultadoConsulta6, titulo);
+}
+
+def updatePAGOFAC = db.execute("""UPDATE EXT.REGISTRO_INTERFACES SET NOTIFICATION = 1 WHERE NOTIFICATION = 0 AND BATCHNAME LIKE '%PAGOFAC%'""");
+
 
 //update EXT.REGISTRO_INTERFACES set notification = 0 where batchname = '1689_MVREC_PRD_20240706_063852_MovDiarios.txt';
 //update EXT.REGISTRO_INTERFACES set notification = 0 where batchname = '1689_MVCAR_PRD_20240912_061502_MovCartera.txt';
