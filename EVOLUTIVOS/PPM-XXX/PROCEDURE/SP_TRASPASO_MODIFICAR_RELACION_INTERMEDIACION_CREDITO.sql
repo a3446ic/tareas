@@ -9,7 +9,8 @@ AS
 	|---------------------------------------------------------------------------------------------- 
 	| Procedure Purpose: TRASPASO DE CARTERA DE UN MEDIADOR A OTRO MEDIADOR SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN
 	| 
-	| Version: 1	
+	| Version: 1
+	| Version: 2 SMM 20260406	Traspasos con ACTIVO = 1 o ACTIVO =2 
 	|
 	| 
 	|
@@ -35,7 +36,7 @@ BEGIN
 	DECLARE v_ModifUser NVARCHAR(50);
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(250) := 'SP_TRASPASO_MODIFICAR_RELACION_INTERMEDIACION_CREDITO';
-    DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
+    DECLARE cVersion  CONSTANT VARCHAR(3) :='02';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'SIN DERECHOS Y OBLIGACIONES A LA RENOVACIÓN ';
@@ -97,7 +98,7 @@ BEGIN
     -------------------------------------------------------------------------------------------
     ------------------ COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P' -----------------------
     -------------------------------------------------------------------------------------------
-    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID AND RAMO = cRamo AND NUM_POLIZA IS NOT NULL) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID AND RAMO = cRamo AND NUM_POLIZA IS NOT NULL) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso AND ACTIVO > 0)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
     	v_tipoTraspaso:= 'PARCIAL';
@@ -136,6 +137,8 @@ BEGIN
 			AND C.COD_SUBCLAVE = CT.SUBCLAVE_RECEPTOR
 		AND RAMO = cRamo
 	--	AND ACTIVO = 1
+		--V2 202604026
+		AND ACTIVO > 0
 		AND NUM_POLIZA IN (SELECT DISTINCT NUM_POLIZA FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseId AND RAMO = cRamo AND NUM_POLIZA IS NOT NULL);
     
  

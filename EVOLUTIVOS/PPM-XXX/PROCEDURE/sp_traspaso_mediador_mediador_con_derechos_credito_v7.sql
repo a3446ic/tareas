@@ -14,7 +14,6 @@ AS
 	| v02: para el mediador receptor se calcula su plan comisionamiento 
 	| v03: 20251119 cambiar fecha de fin en cedente
 	| v04: SMM 20260107 eliminar variable v_numPoliza
-	| Version: 5 SMM 20260406	Traspasos con ACTIVO = 1 o ACTIVO =2
 	|
 	| 
 	|
@@ -38,7 +37,7 @@ BEGIN
     
     -- CONSTANTES
     DECLARE cReport CONSTANT VARCHAR(50) := 'sp_traspaso_mediador_mediador_con_derechos_credito';
-    DECLARE cVersion  CONSTANT VARCHAR(3) :='05';
+    DECLARE cVersion  CONSTANT VARCHAR(3) :='01';
     DECLARE cEsquema CONSTANT VARCHAR(3) := 'EXT';
     DECLARE cRamo CONSTANT VARCHAR(10) := 'CREDITO';
     DECLARE cDerechosObligaciones NVARCHAR(50) := 'CON DERECHOS Y OBLIGACIONES';
@@ -98,7 +97,7 @@ BEGIN
     -------------------------------------------------------------------------------------------
     ------------------ COMPROBAR SI ES TRASPASO TOTAL 'N' O PARCIAL	'P' -----------------------
     -------------------------------------------------------------------------------------------
-    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID AND NUM_POLIZA IS NOT NULL) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso AND ACTIVO > 0)) THEN
+    IF ((SELECT COUNT(*) FROM EXT.SOLICITUD_TRASPASO WHERE CASEID = :caseID AND NUM_POLIZA IS NOT NULL) = (SELECT COUNT(*) FROM EXT.CARTERA WHERE COD_MEDIADOR = :v_codMediadorCedente AND COD_SUBCLAVE = v_subClaveMediadorCedente AND RAMO = cRAMO AND FECHA_VENCIMIENTO >= v_fechaTraspaso)) THEN
     	v_tipoTraspaso:= 'TOTAL';
     ELSE
     	v_tipoTraspaso:= 'PARCIAL';
@@ -182,7 +181,7 @@ BEGIN
 						,ROW_NUMBER() OVER (PARTITION BY CR.NUM_POLIZA, CR.COD_MEDIADOR, CR.COD_SUBCLAVE ORDER BY CR.NUM_ANUALIDAD DESC) AS RN
 					FROM EXT.CARTERA CR 
 					WHERE CR.COD_MEDIADOR = CT.COD_MEDIADOR_CEDENTE AND CR.COD_SUBCLAVE = CT.SUBCLAVE_CEDENTE AND CR.NUM_POLIZA = CT.NUM_POLIZA 
-						AND CR.RAMO = cRamo AND CR.ACTIVO > 0 AND CR.NUM_POLIZA = CT.NUM_POLIZA
+						AND CR.RAMO = cRamo AND CR.ACTIVO = 1 AND CR.NUM_POLIZA = CT.NUM_POLIZA
         ) CRT ON C.NUM_POLIZA = CRT.NUM_POLIZA AND C.COD_MEDIADOR = CRT.COD_MEDIADOR AND C.COD_SUBCLAVE = CRT.COD_SUBCLAVE 
         	        	-- AND C.NUM_ANUALIDAD = CRT.NUM_ANUALIDAD 
         	        	AND CRT.RN = 1

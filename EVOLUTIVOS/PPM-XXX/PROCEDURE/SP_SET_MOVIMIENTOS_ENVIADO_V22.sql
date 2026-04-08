@@ -19,11 +19,9 @@ BEGIN
     -- v19: cambiar COALESCE(COUNT(*),) por CASE WHEN...
     -- v20: Añadir condicion ACTIVO <> 0 (linea 439)
     -- v21: Añadir LPAD(IDPRODUCT,3,0)
-    -- v22: SMM 20251217 Quitar LPAD(IDPRODUCT,3,0) en CREDITO
-    -- v23: SMM 20251218 Updateamos registros con ACTIVO > 0
 	-------------------------------------------------------------------------
 
-	DECLARE cVersion CONSTANT VARCHAR(2) := '23';
+	DECLARE cVersion CONSTANT VARCHAR(2) := '20';
 	DECLARE i_Tenant VARCHAR2(127);
 	DECLARE vProcedure VARCHAR2(127);
 	DECLARE io_contador  INTEGER := 0;
@@ -117,7 +115,7 @@ BEGIN
 				SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE COUNT(*) END INTO mediadoresTraspaso DEFAULT 0
 				FROM EXT.CARTERA
 				WHERE NUM_POLIZA = i.NUM_POLIZA
-				AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+				AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 				AND ACTIVO = 2
 				AND NUM_ANUALIDAD = anualidad;
 				
@@ -126,7 +124,7 @@ BEGIN
 				SELECT CASE WHEN COUNT(*) = 0 THEN 1 ELSE COUNT(*) END INTO registrosRenovacion DEFAULT 1
 				FROM EXT.CARTERA
 				WHERE NUM_POLIZA = i.NUM_POLIZA
-				AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+				AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 				AND ACTIVO = CASE WHEN :mediadoresTraspaso > 0 THEN 2 ELSE 1 END
 				AND NUM_ANUALIDAD = anualidad;
 
@@ -139,7 +137,7 @@ BEGIN
                         DEFAULT i.FECHA_INI, i.FECHA_FIN
 					FROM EXT.CARTERA
 					WHERE NUM_POLIZA = i.NUM_POLIZA
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 					AND ACTIVO = CASE WHEN :mediadoresTraspaso > 0 THEN 2 ELSE 1 END
 					AND NUM_ANUALIDAD = anualidad
 					AND FECHA_INICIO > :fechaInicio 
@@ -153,7 +151,7 @@ BEGIN
                     DEFAULT i.IDMEDIADOR, i.IDSUBCLAVE
 					FROM EXT.CARTERA
 					WHERE NUM_POLIZA = i.NUM_POLIZA
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 					AND ACTIVO = CASE WHEN :mediadoresTraspaso > 0 THEN 2 ELSE 1 END
 					AND NUM_ANUALIDAD = anualidad
 					ORDER BY COD_MEDIADOR DESC
@@ -169,7 +167,7 @@ BEGIN
                     AND COD_MEDIADOR = codigoMediador
                     AND COD_SUBCLAVE = subclaveMediador
                     AND NUM_ANUALIDAD = CASE WHEN ACTIVO = 2 THEN anualidad ELSE i.NUM_ANUALIDAD END
-                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+                    AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 
 
 					IF registroExistente >= 1 THEN --UPDATE
@@ -205,8 +203,7 @@ BEGIN
 		                    AND COD_MEDIADOR = codigoMediador
 		                    AND COD_SUBCLAVE = subclaveMediador
 		                    AND NUM_ANUALIDAD = CASE WHEN ACTIVO = 2 THEN anualidad ELSE i.NUM_ANUALIDAD END
-		                    AND ACTIVO > 0
-		                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+		                    AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 
 						ELSE
 							UPDATE EXT.CARTERA SET
@@ -242,8 +239,7 @@ BEGIN
 							AND FECHA_EFECTO = i.FECHA_EFECTO
 							AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
 							--AND FECHA_VENCIMIENTO = i.FECHA_VENCIMIENTO 
-							AND ACTIVO > 0
-							AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE :getProductId( (select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+							AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE :getProductId( (select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 						END IF;
 
 						CALL LIB_GLOBAL_CESCE :w_debug (
@@ -271,7 +267,7 @@ BEGIN
 						WHERE NUM_POLIZA = i.NUM_POLIZA 
 						AND COD_MEDIADOR = i.IDMEDIADOR 
 						AND COD_SUBCLAVE = i.IDSUBCLAVE
-						AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+						AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 						ORDER BY FECHA_VENCIMIENTO DESC LIMIT  1; 
 
 
@@ -340,7 +336,7 @@ BEGIN
 	                    WHERE NUM_POLIZA = i.NUM_POLIZA 
 	                    AND COD_MEDIADOR = i.IDMEDIADOR 
 	                    AND COD_SUBCLAVE = i.IDSUBCLAVE
-	                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+	                    AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 	                    AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
 	                    AND FECHA_INICIO = i.FECHA_INI) = 1 THEN 
 	                    -- Se obtiene la fecha de vencimiento y de efecto ya existentes para, posteriormente, comparar cuál se ha acortado
@@ -350,7 +346,7 @@ BEGIN
 		                    WHERE NUM_POLIZA = i.NUM_POLIZA 
 		                    AND COD_MEDIADOR = i.IDMEDIADOR 
 		                    AND COD_SUBCLAVE = i.IDSUBCLAVE
-		                    AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+		                    AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 		                    AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
 		                    AND FECHA_INICIO = i.FECHA_INI;
 		                ELSE 
@@ -376,7 +372,7 @@ BEGIN
                             FECHA_EFECTO = ADD_DAYS(i.FECHA_VENCIMIENTO, 1)
                         WHERE NUM_POLIZA = i.NUM_POLIZA
                         AND ACTIVO = 2
-                        AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+                        AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
                     END IF;
                     -------------------------------------------------------------------------------------------------------
 
@@ -393,7 +389,7 @@ BEGIN
 					AND COD_SUBCLAVE = i.IDSUBCLAVE
 					AND (FECHA_EFECTO = i.FECHA_EFECTO OR fechaVencimientoAnterior = i.FECHA_VENCIMIENTO)
 					AND FECHA_INICIO = i.FECHA_INI
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 				ELSE
 					-- SELECT COALESCE(COUNT(*),0) INTO registroExistente DEFAULT 0
 					SELECT CASE WHEN COUNT(*) = 0 THEN 0 ELSE COUNT(*) END INTO registroExistente DEFAULT 0
@@ -403,7 +399,7 @@ BEGIN
 					AND COD_SUBCLAVE = i.IDSUBCLAVE
 					AND FECHA_EFECTO = i.FECHA_EFECTO
 					AND FECHA_INICIO = fechaInicio
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 				END IF;
 				-------------------------------------------------------------------------------------------------------
 		
@@ -443,7 +439,7 @@ BEGIN
 					AND NUM_ANUALIDAD = i.NUM_ANUALIDAD
 					AND ACTIVO <> 0
 					--AND FECHA_VENCIMIENTO = i.FECHA_VENCIMIENTO 
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE :getProductId( (select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE :getProductId( (select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY);
 
 
 					CALL LIB_GLOBAL_CESCE :w_debug (
@@ -470,7 +466,7 @@ BEGIN
 					WHERE NUM_POLIZA = i.NUM_POLIZA 
 					AND COD_MEDIADOR = i.IDMEDIADOR 
 					AND COD_SUBCLAVE = i.IDSUBCLAVE
-					AND IDPRODUCT = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
+					AND LPAD(IDPRODUCT,3,0) = (SELECT EXT.LIB_GLOBAL_CESCE:getProductId((select lpad(i.IDMODALIDAD, 3, '0') from dummy), '0', (CASE WHEN (i.IDPAIS > 0 AND i.IDPAIS <= 52) THEN 116 ELSE i.IDPAIS END), lpad(i.NUM_POLIZA , 8, '0')).productId FROM DUMMY)
 					ORDER BY FECHA_VENCIMIENTO DESC LIMIT  1; 
 
 
@@ -634,8 +630,7 @@ BEGIN
 						AND COD_MEDIADOR = SUBSTR_BEFORE(i.IDMEDIADOR,'-')
 						AND COD_SUBCLAVE = SUBSTR_AFTER(i.IDMEDIADOR,'-')
 						AND FECHA_INICIO = i.FECHA_EFECTO
-						AND NUM_AVAL_HOST = i.NUM_AVAL_HOST
-						AND ACTIVO > 0;
+						AND NUM_AVAL_HOST = i.NUM_AVAL_HOST;
 
 						CALL LIB_GLOBAL_CESCE :w_debug (
 						i_Tenant,
@@ -808,8 +803,7 @@ BEGIN
 					AND COD_MEDIADOR = SUBSTR_BEFORE(i.IDMEDIADOR,'-')
 					AND COD_SUBCLAVE = SUBSTR_AFTER(i.IDMEDIADOR,'-')
 					AND FECHA_INICIO = i.FECHA_EFECTO
-					AND NUM_AVAL_HOST = i.NUM_AVAL_HOST
-					AND ACTIVO > 0;
+					AND NUM_AVAL_HOST = i.NUM_AVAL_HOST;
 
 					CALL LIB_GLOBAL_CESCE :w_debug (
 					i_Tenant,
@@ -916,4 +910,4 @@ BEGIN
     io_contador
 );
 
-END;
+END

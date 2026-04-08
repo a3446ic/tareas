@@ -38,7 +38,7 @@ SQL SECURITY DEFINER DEFAULT SCHEMA "EXT" AS BEGIN
             cReportTable,
             io_contador
         );
-        RESIGNAL;
+        -- RESIGNAL;
 
     END;
 
@@ -59,134 +59,163 @@ SQL SECURITY DEFINER DEFAULT SCHEMA "EXT" AS BEGIN
         io_contador
     );
 
-    -- Contar registros iniciales
-    SELECT COUNT(*) INTO vRegistrosInsertados
-        FROM EXT.RELASUJE_HIST;
+	--BORRAMOS RELASUJE ACTUAL
+	TRUNCATE TABLE EXT.RELASUJE;
+	
+	--CARGAMOS RELASUJE
+	INSERT INTO EXT.RELASUJE(MOD,NUM_POLIZA,TIP,COD_AGENT,NOMBRE_AGENTE,PROVINCIA,PAIS,FEC_INI,FEC_FIN,ERROR,NOMBRE_SUBCLAVE,COD_SUBCLAVE,INTERMEDIA,POSITIONNAME)
+	SELECT MOD,NUM_POLIZA,TIP,COD_AGENT,NOMBRE_AGENTE,PROVINCIA,PAIS
+	, CASE WHEN FEC_INI IS NULL THEN '1990-12-31'
+			WHEN FEC_INI LIKE '%/%' THEN TO_DATE(FEC_INI, 'DD/MM/YYYY')
+		ELSE FEC_INI END FEC_INI
+	, CASE WHEN FEC_FIN IS NULL THEN '2200-01-01'
+		WHEN FEC_FIN LIKE '%/%' THEN TO_DATE(FEC_FIN, 'DD/MM/YYYY')
+		WHEN FEC_FIN = '0000-00-00' THEN '2200-01-01'
+		ELSE FEC_FIN END
+	, ERROR,NOMBRE_SUBCLAVE
+	,LPAD(COD_SUBCLAVE,4,0)
+	,REPLACE(REPLACE(INTERMEDIA,'%',''),',','.') INTERMEDIA
+	,POSITIONNAME
+	FROM EXT.RELASUJE_LOAD;
+	
+	-- ACTUALIZAR POSITIONNAME
+    UPDATE R
+    SET R.POSITIONNAME = MM.COD_MEDIADOR ||'-'|| R.COD_SUBCLAVE
+    FROM EXT.RELASUJE R LEFT JOIN EXT.MODIFICAR_MEDIADOR MM ON LPAD(R.COD_AGENT,9,0) = LPAD(MM.IDHOST,9,0);
+    
+    
+    --ACTUALIZAR AGENTE
+    UPDATE EXT.RELASUJE SET POSITIONNAME = '4439-0000' WHERE COD_AGENT = 151457144;
+    UPDATE EXT.RELASUJE SET POSITIONNAME = '3314-0000' WHERE COD_AGENT = 151388717;
+    
+    -- -- Contar registros iniciales
+    -- SELECT COUNT(*) INTO vRegistrosInsertados
+    --     FROM EXT.RELASUJE_HIST;
 
-    IF (vRegistrosInsertados <> 0) THEN
-        SELECT COUNT(*) INTO vRegistrosModificados
-        FROM EXT.RELASUJE_LOAD AS fuente
-        WHERE NOT EXISTS(SELECT 1 
-            FROM EXT.RELASUJE_HIST AS destino 
-            WHERE COALESCE(destino.MOD,'') = COALESCE(fuente.MOD,'')
-                AND COALESCE(destino.NUM_POLIZA,'') = COALESCE(fuente.NUM_POLIZA,'')
-                AND COALESCE(destino.TIP,'') = COALESCE(fuente.TIP,'') 
-                AND COALESCE(destino.COD_AGENT,'') = COALESCE(fuente.COD_AGENT,'') 
-                AND COALESCE(destino.NOMBRE_AGENTE,'') = COALESCE(fuente.NOMBRE_AGENTE,'') 
-                AND COALESCE(destino.PROVINCIA,'') = COALESCE(fuente.PROVINCIA,'') 
-                AND COALESCE(destino.PAIS,'') = COALESCE(fuente.PAIS,'')  
-                AND COALESCE(destino.FEC_INI,'1990-01-01') = COALESCE(fuente.FEC_INI,'1990-01-01')
-                AND COALESCE(destino.FEC_FIN,'1990-01-01') = COALESCE(fuente.FEC_FIN,'1990-01-01')
-                AND COALESCE(destino.ERROR,'') = COALESCE(fuente.ERROR ,'')
-                AND COALESCE(destino.NOMBRE_SUBCLAVE,'') = COALESCE(fuente.NOMBRE_SUBCLAVE,'')  
-                AND COALESCE(destino.COD_SUBCLAVE,'') = COALESCE(fuente.COD_SUBCLAVE,'')  
-                AND COALESCE(destino.INTERMEDIA,'') = COALESCE(fuente.INTERMEDIA,'')  
-        );
-    END IF;
+    -- IF (vRegistrosInsertados <> 0) THEN
+    --     SELECT COUNT(*) INTO vRegistrosModificados
+    --     FROM EXT.RELASUJE_LOAD AS fuente
+    --     WHERE NOT EXISTS(SELECT 1 
+    --         FROM EXT.RELASUJE_HIST AS destino 
+    --         WHERE COALESCE(destino.MOD,'') = COALESCE(fuente.MOD,'')
+    --             AND COALESCE(destino.NUM_POLIZA,'') = COALESCE(fuente.NUM_POLIZA,'')
+    --             AND COALESCE(destino.TIP,'') = COALESCE(fuente.TIP,'') 
+    --             AND COALESCE(destino.COD_AGENT,'') = COALESCE(fuente.COD_AGENT,'') 
+    --             AND COALESCE(destino.NOMBRE_AGENTE,'') = COALESCE(fuente.NOMBRE_AGENTE,'') 
+    --             AND COALESCE(destino.PROVINCIA,'') = COALESCE(fuente.PROVINCIA,'') 
+    --             AND COALESCE(destino.PAIS,'') = COALESCE(fuente.PAIS,'')  
+    --             AND COALESCE(destino.FEC_INI,'1990-01-01') = COALESCE(fuente.FEC_INI,'1990-01-01')
+    --             AND COALESCE(destino.FEC_FIN,'1990-01-01') = COALESCE(fuente.FEC_FIN,'1990-01-01')
+    --             AND COALESCE(destino.ERROR,'') = COALESCE(fuente.ERROR ,'')
+    --             AND COALESCE(destino.NOMBRE_SUBCLAVE,'') = COALESCE(fuente.NOMBRE_SUBCLAVE,'')  
+    --             AND COALESCE(destino.COD_SUBCLAVE,'') = COALESCE(fuente.COD_SUBCLAVE,'')  
+    --             AND COALESCE(destino.INTERMEDIA,'') = COALESCE(fuente.INTERMEDIA,'')  
+    --     );
+    -- END IF;
 
-    MERGE INTO EXT.RELASUJE_HIST destino
-    USING EXT.RELASUJE_LOAD fuente
-    ON destino.COD_AGENT = fuente.COD_AGENT 
-    AND destino.NUM_POLIZA = fuente.NUM_POLIZA 
-    AND destino.MOD = fuente.MOD
-    WHEN MATCHED AND (
-        COALESCE(destino.FEC_INI,'1990-01-01') <> COALESCE(fuente.FEC_INI,'1990-01-01') 
-        OR COALESCE(destino.FEC_FIN,'1990-01-01') <> COALESCE(fuente.FEC_FIN,'1990-01-01') 
-        OR COALESCE(destino.COD_SUBCLAVE,'') <> COALESCE(fuente.COD_SUBCLAVE,'')
-    ) THEN
-        UPDATE SET 
-            destino.TIP = fuente.TIP,
-            destino.NOMBRE_AGENTE = fuente.NOMBRE_AGENTE,
-            destino.PROVINCIA = fuente.PROVINCIA,
-            destino.PAIS = fuente.PAIS,
-            destino.FEC_INI = fuente.FEC_INI,
-            destino.FEC_FIN = fuente.FEC_FIN,
-            destino.ERROR = fuente.ERROR,
-            destino.NOMBRE_SUBCLAVE = fuente.NOMBRE_SUBCLAVE,
-            destino.COD_SUBCLAVE = fuente.COD_SUBCLAVE,
-            destino.INTERMEDIA = fuente.INTERMEDIA,
-            destino.BATCHNAME = IN_FILENAME,
-            destino.CREATEDATE = CURRENT_TIMESTAMP        
-    WHEN NOT MATCHED THEN
-        INSERT (MOD, NUM_POLIZA, TIP, COD_AGENT, NOMBRE_AGENTE, PROVINCIA, PAIS, FEC_INI, FEC_FIN, ERROR, NOMBRE_SUBCLAVE, COD_SUBCLAVE, INTERMEDIA, BATCHNAME, CREATEDATE)
-        VALUES (fuente.MOD, fuente.NUM_POLIZA, fuente.TIP, fuente.COD_AGENT, fuente.NOMBRE_AGENTE, fuente.PROVINCIA, fuente.PAIS, fuente.FEC_INI, fuente.FEC_FIN, fuente.ERROR, fuente.NOMBRE_SUBCLAVE, fuente.COD_SUBCLAVE, fuente.INTERMEDIA, IN_FILENAME, CURRENT_TIMESTAMP);
+    -- MERGE INTO EXT.RELASUJE_HIST destino
+    -- USING EXT.RELASUJE_LOAD fuente
+    -- ON destino.COD_AGENT = fuente.COD_AGENT 
+    -- AND destino.NUM_POLIZA = fuente.NUM_POLIZA 
+    -- AND destino.MOD = fuente.MOD
+    -- WHEN MATCHED AND (
+    --     COALESCE(destino.FEC_INI,'1990-01-01') <> COALESCE(fuente.FEC_INI,'1990-01-01') 
+    --     OR COALESCE(destino.FEC_FIN,'1990-01-01') <> COALESCE(fuente.FEC_FIN,'1990-01-01') 
+    --     OR COALESCE(destino.COD_SUBCLAVE,'') <> COALESCE(fuente.COD_SUBCLAVE,'')
+    -- ) THEN
+    --     UPDATE SET 
+    --         destino.TIP = fuente.TIP,
+    --         destino.NOMBRE_AGENTE = fuente.NOMBRE_AGENTE,
+    --         destino.PROVINCIA = fuente.PROVINCIA,
+    --         destino.PAIS = fuente.PAIS,
+    --         destino.FEC_INI = fuente.FEC_INI,
+    --         destino.FEC_FIN = fuente.FEC_FIN,
+    --         destino.ERROR = fuente.ERROR,
+    --         destino.NOMBRE_SUBCLAVE = fuente.NOMBRE_SUBCLAVE,
+    --         destino.COD_SUBCLAVE = fuente.COD_SUBCLAVE,
+    --         destino.INTERMEDIA = fuente.INTERMEDIA,
+    --         destino.BATCHNAME = IN_FILENAME,
+    --         destino.CREATEDATE = CURRENT_TIMESTAMP        
+    -- WHEN NOT MATCHED THEN
+    --     INSERT (MOD, NUM_POLIZA, TIP, COD_AGENT, NOMBRE_AGENTE, PROVINCIA, PAIS, FEC_INI, FEC_FIN, ERROR, NOMBRE_SUBCLAVE, COD_SUBCLAVE, INTERMEDIA, BATCHNAME, CREATEDATE)
+    --     VALUES (fuente.MOD, fuente.NUM_POLIZA, fuente.TIP, fuente.COD_AGENT, fuente.NOMBRE_AGENTE, fuente.PROVINCIA, fuente.PAIS, fuente.FEC_INI, fuente.FEC_FIN, fuente.ERROR, fuente.NOMBRE_SUBCLAVE, fuente.COD_SUBCLAVE, fuente.INTERMEDIA, IN_FILENAME, CURRENT_TIMESTAMP);
         
 
-    -- Contar registros finales
-    SELECT COUNT(*) - vRegistrosInsertados INTO vRegistrosInsertados
-        FROM EXT.RELASUJE_HIST;
+    -- -- Contar registros finales
+    -- SELECT COUNT(*) - vRegistrosInsertados INTO vRegistrosInsertados
+    --     FROM EXT.RELASUJE_HIST;
 
 
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || To_VARCHAR(vRegistrosInsertados)  || ' REGISTROS EN EXT.' || cTable , cReportTable, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'MODIFICADOS ' || To_VARCHAR(vRegistrosModificados)  || ' REGISTROS EN EXT.' || cTable , cReportTable, io_contador);
+    -- CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || To_VARCHAR(vRegistrosInsertados)  || ' REGISTROS EN EXT.' || cTable , cReportTable, io_contador);
+    -- CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'MODIFICADOS ' || To_VARCHAR(vRegistrosModificados)  || ' REGISTROS EN EXT.' || cTable , cReportTable, io_contador);
 
-    -- ACTUALIZAR POSITIONNAME
-    UPDATE RH
-    SET RH.POSITIONNAME = MM.COD_MEDIADOR ||'-'|| RH.COD_SUBCLAVE
-    FROM EXT.RELASUJE_HIST RH LEFT JOIN EXT.MODIFICAR_MEDIADOR MM ON RH.COD_AGENT = MM.IDHOST;
+    -- -- ACTUALIZAR POSITIONNAME
+    -- UPDATE RH
+    -- SET RH.POSITIONNAME = MM.COD_MEDIADOR ||'-'|| RH.COD_SUBCLAVE
+    -- FROM EXT.RELASUJE_HIST RH LEFT JOIN EXT.MODIFICAR_MEDIADOR MM ON LPAD(RH.COD_AGENT,9,0) = LPAD(MM.IDHOST,9,0);
 
 
-    --CARGAR TABLA RELASUJE
-    vRegistrosModificados:= 0;
-    vRegistrosInsertados:= 0;
+    -- --CARGAR TABLA RELASUJE
+    -- vRegistrosModificados:= 0;
+    -- vRegistrosInsertados:= 0;
 
-    -- Contar registros iniciales
-    SELECT COUNT(*) INTO vRegistrosInsertados
-        FROM EXT.RELASUJE;
+    -- -- Contar registros iniciales
+    -- SELECT COUNT(*) INTO vRegistrosInsertados
+    --     FROM EXT.RELASUJE;
 
-    IF (vRegistrosInsertados <> 0) THEN
-        SELECT COUNT(*) INTO vRegistrosModificados
-        FROM EXT.RELASUJE_HIST AS fuente
-        WHERE NOT EXISTS(SELECT 1 
-            FROM EXT.RELASUJE AS destino 
-            WHERE COALESCE(destino.MOD,'') = COALESCE(fuente.MOD,'')
-                AND COALESCE(destino.NUM_POLIZA,'') = COALESCE(fuente.NUM_POLIZA,'')
-                AND COALESCE(destino.TIP,'') = COALESCE(fuente.TIP,'') 
-                AND COALESCE(destino.COD_AGENT,'') = COALESCE(fuente.COD_AGENT,'') 
-                AND COALESCE(destino.NOMBRE_AGENTE,'') = COALESCE(fuente.NOMBRE_AGENTE,'') 
-                AND COALESCE(destino.PROVINCIA,'') = COALESCE(fuente.PROVINCIA,'') 
-                AND COALESCE(destino.PAIS,'') = COALESCE(fuente.PAIS,'')  
-                AND COALESCE(destino.FEC_INI,'1990-01-01') = COALESCE(fuente.FEC_INI,'1990-01-01')
-                AND COALESCE(destino.FEC_FIN,'1990-01-01') = COALESCE(fuente.FEC_FIN,'1990-01-01')
-                AND COALESCE(destino.ERROR,'') = COALESCE(fuente.ERROR ,'')
-                AND COALESCE(destino.NOMBRE_SUBCLAVE,'') = COALESCE(fuente.NOMBRE_SUBCLAVE,'')  
-                AND COALESCE(destino.COD_SUBCLAVE,'') = COALESCE(fuente.COD_SUBCLAVE,'')  
-                AND COALESCE(destino.INTERMEDIA,'') = COALESCE(fuente.INTERMEDIA,'')  
-        );
-    END IF;
+    -- IF (vRegistrosInsertados <> 0) THEN
+    --     SELECT COUNT(*) INTO vRegistrosModificados
+    --     FROM EXT.RELASUJE_HIST AS fuente
+    --     WHERE NOT EXISTS(SELECT 1 
+    --         FROM EXT.RELASUJE AS destino 
+    --         WHERE COALESCE(destino.MOD,'') = COALESCE(fuente.MOD,'')
+    --             AND COALESCE(destino.NUM_POLIZA,'') = COALESCE(fuente.NUM_POLIZA,'')
+    --             AND COALESCE(destino.TIP,'') = COALESCE(fuente.TIP,'') 
+    --             AND COALESCE(destino.COD_AGENT,'') = COALESCE(fuente.COD_AGENT,'') 
+    --             AND COALESCE(destino.NOMBRE_AGENTE,'') = COALESCE(fuente.NOMBRE_AGENTE,'') 
+    --             AND COALESCE(destino.PROVINCIA,'') = COALESCE(fuente.PROVINCIA,'') 
+    --             AND COALESCE(destino.PAIS,'') = COALESCE(fuente.PAIS,'')  
+    --             AND COALESCE(destino.FEC_INI,'1990-01-01') = COALESCE(fuente.FEC_INI,'1990-01-01')
+    --             AND COALESCE(destino.FEC_FIN,'1990-01-01') = COALESCE(fuente.FEC_FIN,'1990-01-01')
+    --             AND COALESCE(destino.ERROR,'') = COALESCE(fuente.ERROR ,'')
+    --             AND COALESCE(destino.NOMBRE_SUBCLAVE,'') = COALESCE(fuente.NOMBRE_SUBCLAVE,'')  
+    --             AND COALESCE(destino.COD_SUBCLAVE,'') = COALESCE(fuente.COD_SUBCLAVE,'')  
+    --             AND COALESCE(destino.INTERMEDIA,'') = COALESCE(fuente.INTERMEDIA,'')  
+    --     );
+    -- END IF;
 
-    MERGE INTO EXT.RELASUJE destino
-    USING EXT.RELASUJE_HIST fuente
-    ON destino.COD_AGENT = fuente.COD_AGENT 
-    AND destino.NUM_POLIZA = fuente.NUM_POLIZA 
-    AND destino.MOD = fuente.MOD
-    WHEN MATCHED AND (
-        COALESCE(destino.FEC_INI,'1990-01-01') <> COALESCE(fuente.FEC_INI,'1990-01-01') 
-        OR COALESCE(destino.FEC_FIN,'1990-01-01') <> COALESCE(fuente.FEC_FIN,'1990-01-01') 
-        OR COALESCE(destino.COD_SUBCLAVE,'') <> COALESCE(fuente.COD_SUBCLAVE,'')
-    ) THEN
-        UPDATE SET 
-            destino.TIP = fuente.TIP,
-            destino.NOMBRE_AGENTE = fuente.NOMBRE_AGENTE,
-            destino.PROVINCIA = fuente.PROVINCIA,
-            destino.PAIS = fuente.PAIS,
-            destino.FEC_INI = fuente.FEC_INI,
-            destino.FEC_FIN = fuente.FEC_FIN,
-            destino.ERROR = fuente.ERROR,
-            destino.NOMBRE_SUBCLAVE = fuente.NOMBRE_SUBCLAVE,
-            destino.COD_SUBCLAVE = fuente.COD_SUBCLAVE,
-            destino.INTERMEDIA = fuente.INTERMEDIA       
-    WHEN NOT MATCHED THEN
-        INSERT (MOD, NUM_POLIZA, TIP, COD_AGENT, NOMBRE_AGENTE, PROVINCIA, PAIS, FEC_INI, FEC_FIN, ERROR, NOMBRE_SUBCLAVE, COD_SUBCLAVE, INTERMEDIA, POSITIONNAME)
-        VALUES (fuente.MOD, fuente.NUM_POLIZA, fuente.TIP, fuente.COD_AGENT, fuente.NOMBRE_AGENTE, fuente.PROVINCIA, fuente.PAIS, fuente.FEC_INI, fuente.FEC_FIN, fuente.ERROR, fuente.NOMBRE_SUBCLAVE, fuente.COD_SUBCLAVE, fuente.INTERMEDIA, fuente.POSITIONNAME);
+    -- MERGE INTO EXT.RELASUJE destino
+    -- USING EXT.RELASUJE_HIST fuente
+    -- ON destino.COD_AGENT = fuente.COD_AGENT 
+    -- AND destino.NUM_POLIZA = fuente.NUM_POLIZA 
+    -- AND destino.MOD = fuente.MOD
+    -- WHEN MATCHED AND (
+    --     COALESCE(destino.FEC_INI,'1990-01-01') <> COALESCE(fuente.FEC_INI,'1990-01-01') 
+    --     OR COALESCE(destino.FEC_FIN,'1990-01-01') <> COALESCE(fuente.FEC_FIN,'1990-01-01') 
+    --     OR COALESCE(destino.COD_SUBCLAVE,'') <> COALESCE(fuente.COD_SUBCLAVE,'')
+    -- ) THEN
+    --     UPDATE SET 
+    --         destino.TIP = fuente.TIP,
+    --         destino.NOMBRE_AGENTE = fuente.NOMBRE_AGENTE,
+    --         destino.PROVINCIA = fuente.PROVINCIA,
+    --         destino.PAIS = fuente.PAIS,
+    --         destino.FEC_INI = fuente.FEC_INI,
+    --         destino.FEC_FIN = fuente.FEC_FIN,
+    --         destino.ERROR = fuente.ERROR,
+    --         destino.NOMBRE_SUBCLAVE = fuente.NOMBRE_SUBCLAVE,
+    --         destino.COD_SUBCLAVE = fuente.COD_SUBCLAVE,
+    --         destino.INTERMEDIA = fuente.INTERMEDIA       
+    -- WHEN NOT MATCHED THEN
+    --     INSERT (MOD, NUM_POLIZA, TIP, COD_AGENT, NOMBRE_AGENTE, PROVINCIA, PAIS, FEC_INI, FEC_FIN, ERROR, NOMBRE_SUBCLAVE, COD_SUBCLAVE, INTERMEDIA, POSITIONNAME)
+    --     VALUES (fuente.MOD, fuente.NUM_POLIZA, fuente.TIP, fuente.COD_AGENT, fuente.NOMBRE_AGENTE, fuente.PROVINCIA, fuente.PAIS, fuente.FEC_INI, fuente.FEC_FIN, fuente.ERROR, fuente.NOMBRE_SUBCLAVE, fuente.COD_SUBCLAVE, fuente.INTERMEDIA, fuente.POSITIONNAME);
         
-    -- Contar registros finales
-    SELECT COUNT(*) - vRegistrosInsertados INTO vRegistrosInsertados
-        FROM EXT.RELASUJE;
+    -- -- Contar registros finales
+    -- SELECT COUNT(*) - vRegistrosInsertados INTO vRegistrosInsertados
+    --     FROM EXT.RELASUJE;
 
 
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || To_VARCHAR(vRegistrosInsertados)  || ' REGISTROS EN EXT.RELASUJE', cReportTable, io_contador);
-    CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'MODIFICADOS ' || To_VARCHAR(vRegistrosModificados)  || ' REGISTROS EN EXT.RELASUJE', cReportTable, io_contador);
+    -- CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'INSERTADOS ' || To_VARCHAR(vRegistrosInsertados)  || ' REGISTROS EN EXT.RELASUJE', cReportTable, io_contador);
+    -- CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'MODIFICADOS ' || To_VARCHAR(vRegistrosModificados)  || ' REGISTROS EN EXT.RELASUJE', cReportTable, io_contador);
 
         
         

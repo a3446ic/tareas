@@ -426,7 +426,7 @@ BEGIN
     ---------------------------------------------------------------------------------------------------
     -- INSERTAR EXPEDIENTES
     ---------------------------------------------------------------------------------------------------
-    CALL EXT.SP_CREAR_EXPEDIENTE();
+    --CALL EXT.SP_CREAR_EXPEDIENTE();
 
 	CALL EXT.LIB_GLOBAL_CESCE:w_debug (i_Tenant, 'EXPEDIENTE' || ' Insertados EXPEDIENTES ' || ::ROWCOUNT || ' registros', cReport, io_contador);
 	
