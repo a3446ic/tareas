@@ -23,14 +23,14 @@ set FolderName=%Month%%Year%
 set LogName=%Day%%Month%%Year%
 
 :: Definir la carpeta de destino con la fecha de hoy
-set DEST_DIR_IN="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Inbound_Files"
-set DEST_DIR_IN_TEST="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Inbound_Files\test"
-set DEST_DIR_OUT="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Outbound_Files"
-set DEST_DIR_IN_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files"
-set DEST_DIR_IN_PRD_TEST="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files\test"
-set DEST_DIR_OUT_PRD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Outbound Files"
-set DEST_DIR_BAD="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Bad_Files"
-set LOG_PATH="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\log"
+set DEST_DIR_IN="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\Inbound_Files"
+set DEST_DIR_IN_TEST="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\Inbound_Files\test"
+set DEST_DIR_OUT="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\Outbound_Files"
+set DEST_DIR_IN_PRD="C:\Users\a3446\OneDrive - NUNSYS\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files"
+set DEST_DIR_IN_PRD_TEST="C:\Users\a3446\OneDrive - NUNSYS\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Inbound_Files\test"
+set DEST_DIR_OUT_PRD="C:\Users\a3446\OneDrive - NUNSYS\CESCE-ADS20240201PD-SAPCommissions-CESCE SOPORTE AM\02.DocSoporte\0203.Outbound Files"
+set DEST_DIR_BAD="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\Bad_Files"
+set LOG_PATH="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\log"
 set LOG=%LOG_PATH%\log%LogName%.txt
 set /a contador=0
 
@@ -111,7 +111,7 @@ echo INICIANDO CONEXIÓN %date% %time% >> %LOG%
     "exit" 
 
 :: Configurar las rutas de origen y destino
-:: set SOURCE_DIR="C:\Users\a3446\OneDrive - INSTRUMENTACION Y COMPONENTES SA\ficherosPRD\%FolderName%\Inbound_Files"
+:: set SOURCE_DIR="C:\Users\a3446\OneDrive - NUNSYS\ficherosPRD\%FolderName%\Inbound_Files"
 
 
 
